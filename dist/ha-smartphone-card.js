@@ -348,7 +348,7 @@ function At(t,e,i){return(e=function(t){var e=function(t,e){if("object"!=typeof 
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){const o=null!==(n=i.originalKey)&&void 0!==n?n:i.key,r=null!=e?{kind:"method",placement:"prototype",key:o,descriptor:e(i.key)}:{...i,key:o};return null!=t&&(r.finisher=function(e){t(e,o)}),r}{const n=i.constructor;void 0!==e&&Object.defineProperty(i,o,e(o)),null==t||t(n,o)}})({descriptor:e=>{const i={get(){var e,i;return null!==(i=null===(e=this.renderRoot)||void 0===e?void 0:e.querySelector(t))&&void 0!==i?i:null},enumerable:!0,configurable:!0};return i}})}(".rows")],Ui.prototype,"_rowsEl",void 0),Ui=t([st(mt)],Ui);const Bi={text:{}},zi={text:{multiline:!0}},Li={select:{mode:"dropdown",options:[{value:"normal",label:"Normal"},{value:"high",label:"High"}]}};let Xi=class extends nt{constructor(){super(...arguments),this._quickActionsOpen=!1,this._composeTitle="",this._composeMessage="",this._composePriority="normal",this._composeChannel=""}static getConfigElement(){return document.createElement(mt)}static getStubConfig(){return{mode:"list",rows:[]}}setConfig(t){var e;if(!t)throw new Error("Invalid configuration");this._config={mode:"list",...t,rows:null!==(e=t.rows)&&void 0!==e?e:[]}}getCardSize(){var t,e,i,o;return"phone"===(null===(t=this._config)||void 0===t?void 0:t.mode)?10:1+(null!==(o=null===(i=null===(e=this._config)||void 0===e?void 0:e.rows)||void 0===i?void 0:i.length)&&void 0!==o?o:0)}getLayoutOptions(){var t,e,i,o;if("phone"===(null===(t=this._config)||void 0===t?void 0:t.mode))return{grid_columns:2,grid_rows:8,grid_min_columns:2,grid_min_rows:6};const n=null!==(o=null===(i=null===(e=this._config)||void 0===e?void 0:e.rows)||void 0===i?void 0:i.length)&&void 0!==o?o:0;return{grid_columns:4,grid_rows:Math.max(2,Math.ceil((n+1)/2)+1),grid_min_columns:3,grid_min_rows:2}}connectedCallback(){super.connectedCallback(),this._clockInterval=setInterval(()=>this.requestUpdate(),15e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockInterval&&clearInterval(this._clockInterval)}render(){return this._config&&this.hass?"phone"===this._config.mode?this._renderPhone():this._renderList():j``}_showMoreInfo(t){const e=new CustomEvent("hass-more-info",{bubbles:!0,composed:!0,detail:{entityId:t}});this.dispatchEvent(e)}_openSheet(t){t&&(this._sheetEntityId=t,this._historyPoints=void 0,this._loadHistory(t))}_closeSheet(){this._sheetEntityId=void 0,this._historyPoints=void 0}_toggleSheetEntity(){this._sheetEntityId&&ft(this.hass,this._sheetEntityId)}async _loadHistory(t){var e;try{const i=new Date(Date.now()-864e5).toISOString(),o=await this.hass.callApi("GET",`history/period/${i}?filter_entity_id=${t}&minimal_response`);if(this._sheetEntityId!==t)return;this._historyPoints=null!==(e=null==o?void 0:o[0])&&void 0!==e?e:[]}catch{this._sheetEntityId===t&&(this._historyPoints=[])}}_openQuickActions(){var t;(null===(t=this._config.quick_actions)||void 0===t?void 0:t.length)&&(this._quickActionsOpen=!0)}_closeQuickActions(){this._quickActionsOpen=!1}_runQuickAction(t){if("message"===t.type)return void this._openCompose(t);const[e,i]=t.service.split(".");if(!e||!i)return;const o={...t.data};t.entity_id&&(o.entity_id=t.entity_id),this.hass.callService(e,i,o),this._closeQuickActions()}_openCompose(t){this._composeTarget={service:t.service,name:t.name},this._composeTitle="",this._composeMessage="",this._composePriority="normal",this._composeChannel="",this._quickActionsOpen=!1}_closeCompose(){this._composeTarget=void 0}_submitCompose(){const t=this._composeTarget;if(!t||!this._composeMessage.trim())return;const e={};this._composeChannel.trim()&&(e.channel=this._composeChannel.trim()),"high"===this._composePriority&&(e.push={priority:"high"});const i={message:this._composeMessage};this._composeTitle.trim()&&(i.title=this._composeTitle.trim()),Object.keys(e).length&&(i.data=e);if("notify"===pt(t.service)&&!!this.hass.states[t.service])this.hass.callService("notify","send_message",i,{entity_id:t.service});else{const[e,o]=t.service.split(".");e&&o&&this.hass.callService(e,o,i)}this._closeCompose()}_renderRow(t,e){const i=this.hass,o=function(t,e){var i,o;if(e.type)return e.type;const n=_t(t,e);if(!n)return"text";const r=!Number.isNaN(Number(n.state)),s=null===(i=n.attributes)||void 0===i?void 0:i.device_class;return!r||"battery"!==s&&"%"!==(null===(o=n.attributes)||void 0===o?void 0:o.unit_of_measurement)?"text":"bar"}(i,t);if("message"===o)return this._renderMessageRow(t);const n=_t(i,t),r=function(t,e){return e.name?e.name:bt(t,e.entity)}(i,t),s=function(t,e){var i;if(e.icon)return e.icon;const o=_t(t,e);return null===(i=null==o?void 0:o.attributes)||void 0===i?void 0:i.icon}(i,t);return j`
+function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){const o=null!==(n=i.originalKey)&&void 0!==n?n:i.key,r=null!=e?{kind:"method",placement:"prototype",key:o,descriptor:e(i.key)}:{...i,key:o};return null!=t&&(r.finisher=function(e){t(e,o)}),r}{const n=i.constructor;void 0!==e&&Object.defineProperty(i,o,e(o)),null==t||t(n,o)}})({descriptor:e=>{const i={get(){var e,i;return null!==(i=null===(e=this.renderRoot)||void 0===e?void 0:e.querySelector(t))&&void 0!==i?i:null},enumerable:!0,configurable:!0};return i}})}(".rows")],Ui.prototype,"_rowsEl",void 0),Ui=t([st(mt)],Ui);const Bi={text:{}},zi={text:{multiline:!0}},Li={select:{mode:"dropdown",options:[{value:"normal",label:"Normal"},{value:"high",label:"High"}]}};let Xi=class extends nt{constructor(){super(...arguments),this._quickActionsOpen=!1,this._composeTitle="",this._composeMessage="",this._composePriority="normal",this._composeChannel=""}static getConfigElement(){return document.createElement(mt)}static getStubConfig(){return{mode:"list",rows:[]}}setConfig(t){var e;if(!t)throw new Error("Invalid configuration");this._config={mode:"list",...t,rows:null!==(e=t.rows)&&void 0!==e?e:[]}}getCardSize(){var t,e,i,o;return"phone"===(null===(t=this._config)||void 0===t?void 0:t.mode)?10:1+(null!==(o=null===(i=null===(e=this._config)||void 0===e?void 0:e.rows)||void 0===i?void 0:i.length)&&void 0!==o?o:0)}getLayoutOptions(){var t,e,i,o;if("phone"===(null===(t=this._config)||void 0===t?void 0:t.mode))return{grid_columns:2,grid_rows:8,grid_min_columns:2,grid_min_rows:6};const n=null!==(o=null===(i=null===(e=this._config)||void 0===e?void 0:e.rows)||void 0===i?void 0:i.length)&&void 0!==o?o:0;return{grid_columns:4,grid_rows:Math.max(2,Math.ceil((n+1)/2)+1),grid_min_columns:3,grid_min_rows:2}}connectedCallback(){super.connectedCallback(),this._clockInterval=setInterval(()=>this.requestUpdate(),15e3)}disconnectedCallback(){super.disconnectedCallback(),this._clockInterval&&clearInterval(this._clockInterval)}render(){return this._config&&this.hass?"phone"===this._config.mode?this._renderPhone():this._renderList():j``}_showMoreInfo(t){const e=new CustomEvent("hass-more-info",{bubbles:!0,composed:!0,detail:{entityId:t}});this.dispatchEvent(e)}_openSheet(t){t&&(this._sheetEntityId=t,this._historyPoints=void 0,this._loadHistory(t))}_closeSheet(){this._sheetEntityId=void 0,this._historyPoints=void 0}_toggleSheetEntity(){this._sheetEntityId&&ft(this.hass,this._sheetEntityId)}async _loadHistory(t){var e;try{const i=new Date(Date.now()-864e5).toISOString(),o=await this.hass.callApi("GET",`history/period/${i}?filter_entity_id=${t}&minimal_response`);if(this._sheetEntityId!==t)return;this._historyPoints=null!==(e=null==o?void 0:o[0])&&void 0!==e?e:[]}catch{this._sheetEntityId===t&&(this._historyPoints=[])}}_openQuickActions(){var t;(null===(t=this._config.quick_actions)||void 0===t?void 0:t.length)&&(this._quickActionsOpen=!0)}_closeQuickActions(){this._quickActionsOpen=!1}_runQuickAction(t){if("message"===t.type)return void this._openCompose(t);const[e,i]=t.service.split(".");if(!e||!i)return;const o={...t.data};t.entity_id&&(o.entity_id=t.entity_id),this.hass.callService(e,i,o),this._closeQuickActions()}_openCompose(t){this._composeTarget={service:t.service,name:t.name},this._composeTitle="",this._composeMessage="",this._composePriority="normal",this._composeChannel="",this._quickActionsOpen=!1}_closeCompose(){this._composeTarget=void 0}_isNotifyEntity(t){return"notify"===pt(t)&&!!this.hass.states[t]}_submitCompose(){const t=this._composeTarget;if(!t||!this._composeMessage.trim())return;const e={message:this._composeMessage};if(this._composeTitle.trim()&&(e.title=this._composeTitle.trim()),this._isNotifyEntity(t.service))this.hass.callService("notify","send_message",e,{entity_id:t.service});else{const i={};this._composeChannel.trim()&&(i.channel=this._composeChannel.trim()),"high"===this._composePriority&&(i.push={priority:"high"}),Object.keys(i).length&&(e.data=i);const[o,n]=t.service.split(".");o&&n&&this.hass.callService(o,n,e)}this._closeCompose()}_renderRow(t,e){const i=this.hass,o=function(t,e){var i,o;if(e.type)return e.type;const n=_t(t,e);if(!n)return"text";const r=!Number.isNaN(Number(n.state)),s=null===(i=n.attributes)||void 0===i?void 0:i.device_class;return!r||"battery"!==s&&"%"!==(null===(o=n.attributes)||void 0===o?void 0:o.unit_of_measurement)?"text":"bar"}(i,t);if("message"===o)return this._renderMessageRow(t);const n=_t(i,t),r=function(t,e){return e.name?e.name:bt(t,e.entity)}(i,t),s=function(t,e){var i;if(e.icon)return e.icon;const o=_t(t,e);return null===(i=null==o?void 0:o.attributes)||void 0===i?void 0:i.icon}(i,t);return j`
       <div
         class="row ${!n?"unavailable":""}"
         role="button"
@@ -479,7 +479,7 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </div>
         </div>
       </div>
-    `}_renderComposeSheet(){var t;const e=this._composeTarget;return e?j`
+    `}_renderComposeSheet(){var t;const e=this._composeTarget;if(!e)return j``;const i=this._isNotifyEntity(e.service);return j`
       <div class="sheet-backdrop" @click=${()=>this._closeCompose()}>
         <div class="sheet" @click=${t=>t.stopPropagation()}>
           <div class="sheet-handle"></div>
@@ -499,22 +499,22 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
               .value=${this._composeMessage}
               @value-changed=${t=>{t.stopPropagation(),this._composeMessage=t.detail.value}}
             ></ha-selector>
-            <div class="row-editor-line">
-              <ha-selector
-                .hass=${this.hass}
-                .selector=${Li}
-                label="Priority"
-                .value=${this._composePriority}
-                @value-changed=${t=>{t.stopPropagation(),this._composePriority=t.detail.value}}
-              ></ha-selector>
-              <ha-selector
-                .hass=${this.hass}
-                .selector=${Bi}
-                label="Channel (optional)"
-                .value=${this._composeChannel}
-                @value-changed=${t=>{t.stopPropagation(),this._composeChannel=t.detail.value}}
-              ></ha-selector>
-            </div>
+            ${i?B:j`
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${Li}
+                    label="Priority"
+                    .value=${this._composePriority}
+                    @value-changed=${t=>{t.stopPropagation(),this._composePriority=t.detail.value}}
+                  ></ha-selector>
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${Bi}
+                    label="Channel (optional)"
+                    .value=${this._composeChannel}
+                    @value-changed=${t=>{t.stopPropagation(),this._composeChannel=t.detail.value}}
+                  ></ha-selector>
+                `}
           </div>
           <div class="sheet-actions">
             <mwc-button @click=${()=>this._closeCompose()}>Cancel</mwc-button>
@@ -524,7 +524,7 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </div>
         </div>
       </div>
-    `:j``}_renderSheet(t){var e,i,o,n;const r=this.hass,s=r.states[t],a=function(t){return Et.has(t)}(pt(t)),l=bt(r,t),c=null!==(i=null===(e=null==s?void 0:s.attributes)||void 0===e?void 0:e.icon)&&void 0!==i?i:"mdi:help-circle-outline",d=null!==(n=null===(o=null==s?void 0:s.attributes)||void 0===o?void 0:o.unit_of_measurement)&&void 0!==n?n:"",h=s?`${s.state}${d?` ${d}`:""}`:"Unavailable";return j`
+    `}_renderSheet(t){var e,i,o,n;const r=this.hass,s=r.states[t],a=function(t){return Et.has(t)}(pt(t)),l=bt(r,t),c=null!==(i=null===(e=null==s?void 0:s.attributes)||void 0===e?void 0:e.icon)&&void 0!==i?i:"mdi:help-circle-outline",d=null!==(n=null===(o=null==s?void 0:s.attributes)||void 0===o?void 0:o.unit_of_measurement)&&void 0!==n?n:"",h=s?`${s.state}${d?` ${d}`:""}`:"Unavailable";return j`
       <div class="sheet-backdrop" @click=${()=>this._closeSheet()}>
         <div class="sheet" @click=${t=>t.stopPropagation()}>
           <div class="sheet-handle"></div>
@@ -808,6 +808,8 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
       }
       .sheet {
         width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
         background: var(--card-background-color, var(--ha-card-background));
         border-radius: 20px 20px 0 0;
         padding: 14px 16px 18px;
@@ -858,14 +860,11 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
         display: flex;
         flex-direction: column;
         gap: 10px;
+        max-width: 100%;
       }
-      .compose-form .row-editor-line {
-        display: flex;
-        gap: 8px;
-      }
-      .compose-form .row-editor-line > * {
-        flex: 1;
-        min-width: 0;
+      .compose-form ha-selector {
+        display: block;
+        max-width: 100%;
       }
       .quick-actions-list {
         display: flex;

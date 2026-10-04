@@ -140,12 +140,12 @@ Tap the camera notch or the device name in the status bar to open a sheet listin
 
 ### Send message
 
-`type: message` (on a quick action or a row) opens a small compose dialog right in the card — Title, Message, Priority (Normal/High) and Channel — with Cancel/Send buttons, instead of calling a fixed service. `service` names the notify target:
+`type: message` (on a quick action or a row) opens a small compose dialog right in the card — Title, Message, and (legacy targets only, see below) Priority/Channel — with Cancel/Send buttons, instead of calling a fixed service. `service` names the notify target:
 
-- A modern **notify entity** (e.g. `notify.sm_a346b`, from the `notify` domain as a real entity) — sent via `notify.send_message` targeting that entity.
-- A **legacy notify service** (e.g. `notify.mobile_app_sm_a346b`, from before HA 2024.10's switch to notify entities) — called directly, since it isn't a real entity. The card tells the two apart automatically by checking whether `service` resolves to an actual entity state.
+- A modern **notify entity** (e.g. `notify.sm_a346b`, from the `notify` domain as a real entity, introduced in HA 2024.10) — sent via the generic `notify.send_message` action targeting that entity. This action's schema only accepts `message` and `title`, nothing else — so the compose dialog only shows those two fields for an entity target.
+- A **legacy notify service** (e.g. `notify.mobile_app_sm_a346b`, from before the notify-entity migration) — called directly, since it isn't a real entity. These accept an arbitrary `data` dict, so the compose dialog also shows Priority (sent as `data.push.priority: high`) and Channel (`data.channel`) — both specific to the Android companion app's notification integration; other legacy notify services (email, Telegram, etc.) will ignore them.
 
-Priority "High" is sent as `data.push.priority: high`; Channel is sent as `data.channel`. Both are optional and specific to the Android companion app's notification integration — other notify targets (email, Telegram, etc.) only use Title/Message and will ignore them.
+The card tells the two apart automatically by checking whether `service` resolves to an actual entity state.
 
 ### Other Android companion app notification commands
 
