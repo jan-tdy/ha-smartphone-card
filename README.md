@@ -76,6 +76,7 @@ rows:
 | `icon` | custom icon, otherwise the entity's icon |
 | `type` | `text` \| `bar` \| `icon`; numeric `%` sensors automatically default to `bar` |
 | `min`, `max` | range used to compute the percentage for `bar` type (default 0–100) |
+| `value_attribute` | show this attribute instead of the raw state — e.g. some "last used app" sensors report the Android package name (`com.pinterest`) as their state, with a friendlier label in an attribute (check Developer Tools → States for the exact attribute name on your entity, e.g. `app_name`) |
 
 Percentage/battery bars (`type: bar` on a `%` unit or `device_class: battery` entity) are colored by value: red at 20% or below, orange up to 50%, green above. Bars on other units (lux, steps...) keep the theme's accent color.
 
@@ -83,16 +84,47 @@ Percentage/battery bars (`type: bar` on a `%` unit or `device_class: battery` en
 
 ```yaml
 quick_actions:
-  - icon: mdi:cellphone-sound
-    name: Find phone
+  - icon: mdi:moon-waning-crescent
+    name: Do Not Disturb
     service: notify.mobile_app_sm_a346b
-  - icon: mdi:weather-night
-    name: DND
+    data:
+      message: command_dnd
+      data:
+        command: total_silence   # alarms_only | off | priority_only | total_silence
+  - icon: mdi:volume-mute
+    name: Silent
+    service: notify.mobile_app_sm_a346b
+    data:
+      message: command_ringer_mode
+      data:
+        command: silent   # normal | silent | vibrate
+  - icon: mdi:flashlight
+    name: Flashlight
+    service: notify.mobile_app_sm_a346b
+    data:
+      message: command_flashlight
+      data:
+        command: turn_on   # turn_on | turn_off
+  - icon: mdi:refresh
+    name: Refresh sensors
+    service: notify.mobile_app_sm_a346b
+    data:
+      message: command_update_sensors
+  - icon: mdi:lightbulb-outline
+    name: Toggle lamp
     service: switch.toggle
-    entity_id: switch.sm_a346b_do_not_disturb
+    entity_id: switch.living_room_lamp
 ```
 
-Tap the camera notch or the device name in the status bar to open a sheet listing these as tappable rows. `service` is `domain.service`; `entity_id` (optional) is passed as the service call's target.
+Tap the camera notch or the device name in the status bar to open a sheet listing these as tappable rows.
+
+| Key | Description |
+|---|---|
+| `service` | `domain.service` to call |
+| `entity_id` | optional, passed as the service call's `entity_id` |
+| `data` | optional extra service data (merged with `entity_id`) |
+
+The `notify.mobile_app_<device>` examples above use the [Android companion app's special notification commands](https://companion.home-assistant.io/docs/notifications/notification-commands/) — replace `notify.mobile_app_sm_a346b` with your own device's notify service. There's no "find phone / ring loudly" command built into the app; `command_dnd`/`command_ringer_mode`/`command_flashlight`/`command_update_sensors` above are real, documented ones. The companion app docs list several more (volume, screen brightness, Bluetooth, launching an app, opening a dashboard, etc.) that work the same way.
 
 ## Phone frame color
 

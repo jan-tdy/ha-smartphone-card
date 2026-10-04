@@ -89,6 +89,14 @@ export function getRowPercent(hass: HomeAssistant, row: SmartphoneCardRow): numb
 export function getRowDisplayValue(hass: HomeAssistant, row: SmartphoneCardRow): string {
   const stateObj = getRowState(hass, row);
   if (!stateObj) return "—";
+
+  if (row.value_attribute) {
+    const attrValue = stateObj.attributes?.[row.value_attribute];
+    if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
+      return String(attrValue);
+    }
+  }
+
   const unit = getRowUnit(hass, row);
   return unit ? `${stateObj.state} ${unit}` : stateObj.state;
 }

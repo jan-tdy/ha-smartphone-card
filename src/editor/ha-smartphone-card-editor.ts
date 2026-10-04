@@ -32,6 +32,7 @@ const ICON_SELECTOR = { icon: {} } as const;
 const TEXT_SELECTOR = { text: {} } as const;
 const NUMBER_SELECTOR = { number: { mode: "box" } } as const;
 const DEVICE_SELECTOR = { device: {} } as const;
+const OBJECT_SELECTOR = { object: {} } as const;
 
 @customElement(EDITOR_TYPE)
 export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEditor {
@@ -323,6 +324,16 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               }}
             ></ha-selector>
           </div>
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${OBJECT_SELECTOR}
+            label="Service data (optional)"
+            .value=${action.data ?? {}}
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateQuickAction(index, { data: e.detail.value });
+            }}
+          ></ha-selector>
         </div>
         <ha-icon-button class="remove" @click=${() => this._removeQuickAction(index)}>
           <ha-icon icon="mdi:close"></ha-icon>
@@ -378,6 +389,16 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               }}
             ></ha-selector>
           </div>
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${TEXT_SELECTOR}
+            label="Value attribute (optional, e.g. app_name)"
+            .value=${row.value_attribute ?? ""}
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateRow(index, { value_attribute: e.detail.value || undefined });
+            }}
+          ></ha-selector>
           ${row.type === "bar"
             ? html`<div class="row-editor-line">
                 <ha-selector

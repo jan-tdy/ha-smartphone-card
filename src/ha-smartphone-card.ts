@@ -154,7 +154,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   private _runQuickAction(action: SmartphoneCardQuickAction) {
     const [domain, service] = action.service.split(".");
     if (!domain || !service) return;
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = { ...action.data };
     if (action.entity_id) data.entity_id = action.entity_id;
     this.hass.callService(domain, service, data);
     this._closeQuickActions();
