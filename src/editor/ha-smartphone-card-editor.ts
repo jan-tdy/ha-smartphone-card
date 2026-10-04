@@ -3,7 +3,8 @@ import { customElement, property, state, query } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 import Sortable from "sortablejs";
 import { EDITOR_TYPE } from "../const";
-import { SmartphoneCardConfig, SmartphoneCardRow } from "../types";
+import { SmartphoneCardConfig, SmartphoneCardQuickAction, SmartphoneCardRow } from "../types";
+import { EntityRegistryEntry } from "../helpers";
 
 const MODE_SELECTOR = {
   select: {
@@ -31,13 +32,6 @@ const ICON_SELECTOR = { icon: {} } as const;
 const TEXT_SELECTOR = { text: {} } as const;
 const NUMBER_SELECTOR = { number: { mode: "box" } } as const;
 const DEVICE_SELECTOR = { device: {} } as const;
-
-interface EntityRegistryEntry {
-  entity_id: string;
-  device_id?: string | null;
-  hidden?: boolean;
-  disabled_by?: string | null;
-}
 
 @customElement(EDITOR_TYPE)
 export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEditor {
@@ -106,14 +100,20 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
     const deviceId = this._deviceToAdd;
     if (!deviceId) return;
     const registry = ((this.hass as any).entities ?? {}) as Record<string, EntityRegistryEntry>;
-    const existing = new Set(this._config.rows.map((row) => row.entity));
+    const sb = this._config.status_bar ?? {};
+    const alreadyUsed = new Set(
+      [...this._config.rows.map((row) => row.entity), sb.battery_entity, sb.charging_entity, sb.wifi_entity, sb.mobile_data_entity].filter(
+        (id): id is string => !!id
+      )
+    );
     const newRows: SmartphoneCardRow[] = Object.values(registry)
       .filter(
         (entry) =>
           entry.device_id === deviceId &&
-          !entry.hidden &&
+          !entry.hidden_by &&
           !entry.disabled_by &&
-          !existing.has(entry.entity_id)
+          !entry.entity_category &&
+          !alreadyUsed.has(entry.entity_id)
       )
       .map((entry) => ({ entity: entry.entity_id }));
 
@@ -121,6 +121,23 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       this._updateConfig({ rows: [...this._config.rows, ...newRows] });
     }
     this._deviceToAdd = undefined;
+  }
+
+  private _updateQuickAction(index: number, partial: Partial<SmartphoneCardQuickAction>) {
+    const quick_actions = (this._config.quick_actions ?? []).map((qa, i) =>
+      i === index ? { ...qa, ...partial } : qa
+    );
+    this._updateConfig({ quick_actions });
+  }
+
+  private _addQuickAction() {
+    const quick_actions = [...(this._config.quick_actions ?? []), { service: "" }];
+    this._updateConfig({ quick_actions });
+  }
+
+  private _removeQuickAction(index: number) {
+    const quick_actions = (this._config.quick_actions ?? []).filter((_, i) => i !== index);
+    this._updateConfig({ quick_actions });
   }
 
   protected render(): TemplateResult {
@@ -243,6 +260,74 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
           </div>
           <mwc-button @click=${this._addRow}>+ Add entity</mwc-button>
         </div>
+
+        ${mode === "phone"
+          ? html`
+              <div class="section">
+                <div class="section-title">Quick actions</div>
+                <div class="rows">
+                  ${(this._config.quick_actions ?? []).map((qa, index) => this._renderQuickActionEditor(qa, index))}
+                </div>
+                <mwc-button @click=${this._addQuickAction}>+ Add quick action</mwc-button>
+              </div>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderQuickActionEditor(action: SmartphoneCardQuickAction, index: number): TemplateResult {
+    return html`
+      <div class="row-editor">
+        <div class="row-editor-fields">
+          <div class="row-editor-line">
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${ICON_SELECTOR}
+              label="Icon"
+              .value=${action.icon ?? ""}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateQuickAction(index, { icon: e.detail.value });
+              }}
+            ></ha-selector>
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${TEXT_SELECTOR}
+              label="Name"
+              .value=${action.name ?? ""}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateQuickAction(index, { name: e.detail.value });
+              }}
+            ></ha-selector>
+          </div>
+          <div class="row-editor-line">
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${TEXT_SELECTOR}
+              label="Service (e.g. switch.turn_on)"
+              .value=${action.service}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateQuickAction(index, { service: e.detail.value });
+              }}
+            ></ha-selector>
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${ENTITY_SELECTOR}
+              label="Target entity (optional)"
+              .value=${action.entity_id ?? ""}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateQuickAction(index, { entity_id: e.detail.value });
+              }}
+            ></ha-selector>
+          </div>
+        </div>
+        <ha-icon-button class="remove" @click=${() => this._removeQuickAction(index)}>
+          <ha-icon icon="mdi:close"></ha-icon>
+        </ha-icon-button>
       </div>
     `;
   }

@@ -7,7 +7,7 @@ Installable via HACS (custom repository), fully configurable through a visual ed
 ## Modes
 
 - **list** – rows styled like the official `entities` card. Percentage/battery values can also be rendered as a progress bar.
-- **phone** – the card looks like a phone (rounded frame, notch, status bar with clock, Wi-Fi/mobile data and battery), with a "screen" showing the other selected entities (location, brightness, last used app, steps...).
+- **phone** – the card looks like a phone (rounded frame, notch, status bar with clock, Wi-Fi/mobile data and battery), with a "screen" showing the other selected entities (location, brightness, last used app, steps...). Tapping a row or a status bar icon opens a small in-phone detail sheet (icon, name, state, a toggle button for toggleable domains, and a "More details" link to Home Assistant's own dialog) instead of leaving the phone illustration. In list mode, tapping a row opens Home Assistant's standard more-info dialog directly.
 
 ## Installation
 
@@ -24,7 +24,7 @@ Installable via HACS (custom repository), fully configurable through a visual ed
 
 ## Configuration
 
-The recommended way is through the card's visual editor (Add Card → Smartphone Card), which uses Home Assistant's own selector dropdowns, entity/device pickers and icon picker. The editor also has an "Add entities from a device" picker: pick the phone's device and it bulk-adds a row for every one of its entities. Below is an example YAML.
+The recommended way is through the card's visual editor (Add Card → Smartphone Card), which uses Home Assistant's own selector dropdowns, entity/device pickers and icon picker. The editor also has an "Add entities from a device" picker: pick the phone's device and it bulk-adds a row for every one of its entities (it skips diagnostic/config entities and anything already used in the status bar). Below is an example YAML.
 
 ### List
 
@@ -75,6 +75,27 @@ rows:
 | `icon` | custom icon, otherwise the entity's icon |
 | `type` | `text` \| `bar` \| `icon`; numeric `%` sensors automatically default to `bar` |
 | `min`, `max` | range used to compute the percentage for `bar` type (default 0–100) |
+
+Percentage/battery bars (`type: bar` on a `%` unit or `device_class: battery` entity) are colored by value: red at 20% or below, orange up to 50%, green above. Bars on other units (lux, steps...) keep the theme's accent color.
+
+## Quick actions (phone mode)
+
+```yaml
+quick_actions:
+  - icon: mdi:cellphone-sound
+    name: Find phone
+    service: notify.mobile_app_sm_a346b
+  - icon: mdi:weather-night
+    name: DND
+    service: switch.toggle
+    entity_id: switch.sm_a346b_do_not_disturb
+```
+
+Renders as a row of tappable chips above the entity list. `service` is `domain.service`; `entity_id` (optional) is passed as the service call's target.
+
+## Sensor-reading Wi-Fi/mobile icons
+
+If `status_bar.wifi_entity` or `status_bar.mobile_data_entity` happens to hold a numeric signal reading (a `%` or dBm-style sensor) instead of a plain on/off sensor, the status bar icon shows a signal-strength tier instead of a flat connected/disconnected icon.
 
 ## Development
 

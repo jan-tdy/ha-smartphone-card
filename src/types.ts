@@ -21,6 +21,13 @@ export interface SmartphoneCardStatusBar {
 
 export type SmartphoneCardMode = "list" | "phone";
 
+export interface SmartphoneCardQuickAction {
+  service: string;
+  entity_id?: string;
+  name?: string;
+  icon?: string;
+}
+
 export interface SmartphoneCardConfig extends LovelaceCardConfig {
   type: string;
   mode?: SmartphoneCardMode;
@@ -28,4 +35,5 @@ export interface SmartphoneCardConfig extends LovelaceCardConfig {
   device_name?: string;
   status_bar?: SmartphoneCardStatusBar;
   rows: SmartphoneCardRow[];
+  quick_actions?: SmartphoneCardQuickAction[];
 }
