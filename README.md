@@ -111,11 +111,17 @@ quick_actions:
         command: silent   # normal | silent | vibrate
   - icon: mdi:flashlight
     name: Flashlight
+    type: toggle
     service: notify.mobile_app_sm_a346b
     data:
       message: command_flashlight
       data:
-        command: turn_on   # turn_on | turn_off
+        command: turn_on
+    service_off: notify.mobile_app_sm_a346b
+    data_off:
+      message: command_flashlight
+      data:
+        command: turn_off
   - icon: mdi:refresh
     name: Refresh sensors
     service: notify.mobile_app_sm_a346b
@@ -123,7 +129,7 @@ quick_actions:
       message: command_update_sensors
   - icon: mdi:lightbulb-outline
     name: Toggle lamp
-    service: switch.toggle
+    type: toggle
     entity_id: switch.living_room_lamp
   - icon: mdi:message-text
     name: Send message
@@ -135,10 +141,45 @@ Tap the camera notch or the device name in the status bar to open a sheet listin
 
 | Key | Description |
 |---|---|
-| `type` | `service` (default) — call `service` immediately — or `message` — open a compose dialog instead |
-| `service` | `domain.service` to call, or (when `type: message`) the notify target |
-| `entity_id` | optional, passed as the service call's `entity_id` (ignored for `type: message`) |
-| `data` | optional extra service data, merged with `entity_id` (ignored for `type: message`) |
+| `type` | `service` (default) — call `service` immediately — `message` — open a compose dialog — or `toggle` — show a switch instead of a tappable row |
+| `service` | `domain.service` to call, or (when `type: message`) the notify target, or (when `type: toggle`) the "turn on" service |
+| `entity_id` | optional, passed as the service call's `entity_id` (ignored for `type: message`); for `type: toggle`, also used to read the current on/off state when it's a toggleable domain |
+| `data` | optional extra service data, merged with `entity_id` (ignored for `type: message`); for `type: toggle`, used on the "turn on" call |
+| `service_off`, `data_off` | `type: toggle` only — service/data used for the "turn off" call (defaults to `service`/`data`) |
+| `state_entity` | `type: toggle` only — entity whose state is read for on/off, when it's different from the entity `service`/`service_off` act on (or when there's no real entity at all) |
+
+### Toggle quick actions
+
+Some commands are naturally on/off rather than one-shot — a flashlight, Do Not Disturb, a switch — and showing them as a switch instead of a tap-to-fire button is clearer:
+
+```yaml
+quick_actions:
+  # A real toggleable entity: leave `service` empty and it's toggled directly,
+  # and the switch always reflects its live state.
+  - type: toggle
+    icon: mdi:lightbulb-outline
+    name: Toggle lamp
+    entity_id: switch.living_room_lamp
+
+  # A companion-app command with no backing entity: give separate "on"/"off"
+  # service calls. There's no state to read back, so the switch tracks its own
+  # on/off locally in the card (it resets to off on reload).
+  - type: toggle
+    icon: mdi:flashlight
+    name: Flashlight
+    service: notify.mobile_app_sm_a346b
+    data:
+      message: command_flashlight
+      data:
+        command: turn_on
+    service_off: notify.mobile_app_sm_a346b
+    data_off:
+      message: command_flashlight
+      data:
+        command: turn_off
+```
+
+If a real sensor exists for the on/off state (e.g. a flashlight `binary_sensor`), set `state_entity` to it and the switch will reflect that instead of the local guess.
 
 ### Send message
 

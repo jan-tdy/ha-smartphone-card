@@ -34,6 +34,7 @@ const QUICK_ACTION_TYPE_SELECTOR = {
     options: [
       { value: "service", label: "Run a service" },
       { value: "message", label: "Send message (compose dialog)" },
+      { value: "toggle", label: "Toggle (switch)" },
     ],
   },
 } as const;
@@ -331,50 +332,121 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
                 .hass=${this.hass}
                 .selector=${NOTIFY_ENTITY_SELECTOR}
                 label="Notify entity"
-                .value=${action.service}
+                .value=${action.service ?? ""}
                 @value-changed=${(e: CustomEvent) => {
                   e.stopPropagation();
                   this._updateQuickAction(index, { service: e.detail.value });
                 }}
               ></ha-selector>`
-            : html`
-                <div class="row-editor-line">
-                  <ha-service-picker
-                    .hass=${this.hass}
-                    label="Service"
-                    .value=${action.service}
-                    @value-changed=${(e: CustomEvent) => {
-                      e.stopPropagation();
-                      this._updateQuickAction(index, { service: e.detail.value });
-                    }}
-                  ></ha-service-picker>
+            : qaType === "toggle"
+              ? this._renderToggleQuickActionFields(action, index)
+              : html`
+                  <div class="row-editor-line">
+                    <ha-service-picker
+                      .hass=${this.hass}
+                      label="Service"
+                      .value=${action.service ?? ""}
+                      @value-changed=${(e: CustomEvent) => {
+                        e.stopPropagation();
+                        this._updateQuickAction(index, { service: e.detail.value });
+                      }}
+                    ></ha-service-picker>
+                    <ha-selector
+                      .hass=${this.hass}
+                      .selector=${ENTITY_SELECTOR}
+                      label="Target entity (optional)"
+                      .value=${action.entity_id ?? ""}
+                      @value-changed=${(e: CustomEvent) => {
+                        e.stopPropagation();
+                        this._updateQuickAction(index, { entity_id: e.detail.value });
+                      }}
+                    ></ha-selector>
+                  </div>
                   <ha-selector
                     .hass=${this.hass}
-                    .selector=${ENTITY_SELECTOR}
-                    label="Target entity (optional)"
-                    .value=${action.entity_id ?? ""}
+                    .selector=${OBJECT_SELECTOR}
+                    label="Service data (optional)"
+                    .value=${action.data ?? {}}
                     @value-changed=${(e: CustomEvent) => {
                       e.stopPropagation();
-                      this._updateQuickAction(index, { entity_id: e.detail.value });
+                      this._updateQuickAction(index, { data: e.detail.value });
                     }}
                   ></ha-selector>
-                </div>
-                <ha-selector
-                  .hass=${this.hass}
-                  .selector=${OBJECT_SELECTOR}
-                  label="Service data (optional)"
-                  .value=${action.data ?? {}}
-                  @value-changed=${(e: CustomEvent) => {
-                    e.stopPropagation();
-                    this._updateQuickAction(index, { data: e.detail.value });
-                  }}
-                ></ha-selector>
-              `}
+                `}
         </div>
         <ha-icon-button class="remove" @click=${() => this._removeQuickAction(index)}>
           <ha-icon icon="mdi:close"></ha-icon>
         </ha-icon-button>
       </div>
+    `;
+  }
+
+  private _renderToggleQuickActionFields(action: SmartphoneCardQuickAction, index: number): TemplateResult {
+    return html`
+      <ha-selector
+        .hass=${this.hass}
+        .selector=${ENTITY_SELECTOR}
+        label="Entity (optional – a toggleable entity reflects its own state; any other entity is just passed as entity_id)"
+        .value=${action.entity_id ?? ""}
+        @value-changed=${(e: CustomEvent) => {
+          e.stopPropagation();
+          this._updateQuickAction(index, { entity_id: e.detail.value });
+        }}
+      ></ha-selector>
+      <ha-selector
+        .hass=${this.hass}
+        .selector=${ENTITY_SELECTOR}
+        label="State entity (optional – read on/off from here instead of tracking it locally)"
+        .value=${action.state_entity ?? ""}
+        @value-changed=${(e: CustomEvent) => {
+          e.stopPropagation();
+          this._updateQuickAction(index, { state_entity: e.detail.value });
+        }}
+      ></ha-selector>
+      <div class="section-title">Turn on</div>
+      <div class="row-editor-line">
+        <ha-service-picker
+          .hass=${this.hass}
+          label="Service (leave empty to just toggle the entity above)"
+          .value=${action.service ?? ""}
+          @value-changed=${(e: CustomEvent) => {
+            e.stopPropagation();
+            this._updateQuickAction(index, { service: e.detail.value });
+          }}
+        ></ha-service-picker>
+      </div>
+      <ha-selector
+        .hass=${this.hass}
+        .selector=${OBJECT_SELECTOR}
+        label="Service data for 'on' (optional)"
+        .value=${action.data ?? {}}
+        @value-changed=${(e: CustomEvent) => {
+          e.stopPropagation();
+          this._updateQuickAction(index, { data: e.detail.value });
+        }}
+      ></ha-selector>
+      <div class="section-title">Turn off</div>
+      <div class="row-editor-line">
+        <ha-service-picker
+          .hass=${this.hass}
+          label="Service (optional, defaults to the 'on' service above)"
+          .value=${action.service_off ?? ""}
+          @value-changed=${(e: CustomEvent) => {
+            e.stopPropagation();
+            this._updateQuickAction(index, { service_off: e.detail.value });
+          }}
+        ></ha-service-picker>
+      </div>
+      <ha-selector
+        .hass=${this.hass}
+        .selector=${OBJECT_SELECTOR}
+        label="Service data for 'off' (optional)"
+        .value=${action.data_off ?? {}}
+        @value-changed=${(e: CustomEvent) => {
+          e.stopPropagation();
+          this._updateQuickAction(index, { data_off: e.detail.value });
+        }}
+      ></ha-selector>
     `;
   }
 

@@ -52,6 +52,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
 
   @state() private _quickActionsOpen = false;
 
+  @state() private _localToggleStates: Record<number, boolean> = {};
+
   @state() private _historyPoints?: HistoryPoint[];
 
   @state() private _composeTarget?: { service: string; name?: string };
@@ -173,12 +175,16 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._quickActionsOpen = false;
   }
 
-  private _runQuickAction(action: SmartphoneCardQuickAction) {
+  private _runQuickAction(action: SmartphoneCardQuickAction, index: number) {
     if (action.type === "message") {
       this._openCompose(action);
       return;
     }
-    const [domain, service] = action.service.split(".");
+    if (action.type === "toggle") {
+      this._toggleQuickAction(action, index);
+      return;
+    }
+    const [domain, service] = (action.service ?? "").split(".");
     if (!domain || !service) return;
     const data: Record<string, unknown> = { ...action.data };
     if (action.entity_id) data.entity_id = action.entity_id;
@@ -186,7 +192,36 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._closeQuickActions();
   }
 
+  private _isQuickActionOn(action: SmartphoneCardQuickAction, index: number): boolean {
+    if (action.state_entity) return isOn(this.hass, action.state_entity);
+    if (action.entity_id && !action.service && isToggleableDomain(computeDomain(action.entity_id))) {
+      return isOn(this.hass, action.entity_id);
+    }
+    return this._localToggleStates[index] ?? false;
+  }
+
+  private _toggleQuickAction(action: SmartphoneCardQuickAction, index: number) {
+    const entityDomain = action.entity_id ? computeDomain(action.entity_id) : undefined;
+    if (action.entity_id && entityDomain && isToggleableDomain(entityDomain) && !action.service) {
+      toggleEntity(this.hass, action.entity_id);
+      return;
+    }
+
+    const turningOn = !this._isQuickActionOn(action, index);
+    const service = turningOn ? action.service : action.service_off || action.service;
+    const [domain, serviceName] = (service ?? "").split(".");
+    if (domain && serviceName) {
+      const data: Record<string, unknown> = { ...(turningOn ? action.data : action.data_off ?? action.data) };
+      if (action.entity_id) data.entity_id = action.entity_id;
+      this.hass.callService(domain, serviceName, data);
+    }
+    if (!action.state_entity) {
+      this._localToggleStates = { ...this._localToggleStates, [index]: turningOn };
+    }
+  }
+
   private _openCompose(action: SmartphoneCardQuickAction) {
+    if (!action.service) return;
     this._composeTarget = { service: action.service, name: action.name };
     this._composeTitle = "";
     this._composeMessage = "";
@@ -436,14 +471,17 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
           <div class="sheet-handle"></div>
           <div class="sheet-title">Quick actions</div>
           <div class="quick-actions-list">
-            ${actions.map(
-              (qa) => html`
-                <button class="quick-action-row" @click=${() => this._runQuickAction(qa)}>
+            ${actions.map((qa, index) => {
+              const isToggle = qa.type === "toggle";
+              const on = isToggle && this._isQuickActionOn(qa, index);
+              return html`
+                <button class="quick-action-row" @click=${() => this._runQuickAction(qa, index)}>
                   <ha-icon icon=${qa.icon ?? "mdi:flash"}></ha-icon>
-                  <span>${qa.name ?? qa.service}</span>
+                  <span>${qa.name ?? qa.service ?? qa.entity_id ?? "Quick action"}</span>
+                  ${isToggle ? html`<ha-switch .checked=${on} tabindex="-1"></ha-switch>` : nothing}
                 </button>
-              `
-            )}
+              `;
+            })}
           </div>
         </div>
       </div>
@@ -984,6 +1022,13 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       }
       .quick-action-row ha-icon {
         color: var(--primary-color);
+      }
+      .quick-action-row span {
+        flex: 1;
+        min-width: 0;
+      }
+      .quick-action-row ha-switch {
+        pointer-events: none;
       }
       .sheet-history {
         margin-top: 12px;
