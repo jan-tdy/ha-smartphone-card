@@ -36,4 +36,5 @@ export interface SmartphoneCardConfig extends LovelaceCardConfig {
   status_bar?: SmartphoneCardStatusBar;
   rows: SmartphoneCardRow[];
   quick_actions?: SmartphoneCardQuickAction[];
+  frame_color?: string;
 }

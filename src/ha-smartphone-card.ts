@@ -9,10 +9,14 @@ import {
   getRowDisplayType,
   getRowDisplayValue,
   getRowIcon,
+  getEntityDisplayName,
   getRowName,
   getRowPercent,
   getRowState,
   getWifiIcon,
+  HistoryPoint,
+  isConnected,
+  isMostlyNumeric,
   isOn,
   isToggleableDomain,
   stateOf,
@@ -33,6 +37,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _config!: SmartphoneCardConfig;
 
   @state() private _sheetEntityId?: string;
+
+  @state() private _quickActionsOpen = false;
+
+  @state() private _historyPoints?: HistoryPoint[];
 
   private _clockInterval?: ReturnType<typeof setInterval>;
 
@@ -106,15 +114,41 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   private _openSheet(entityId: string) {
     if (!entityId) return;
     this._sheetEntityId = entityId;
+    this._historyPoints = undefined;
+    this._loadHistory(entityId);
   }
 
   private _closeSheet() {
     this._sheetEntityId = undefined;
+    this._historyPoints = undefined;
   }
 
   private _toggleSheetEntity() {
     if (!this._sheetEntityId) return;
     toggleEntity(this.hass, this._sheetEntityId);
+  }
+
+  private async _loadHistory(entityId: string) {
+    try {
+      const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const result = await this.hass.callApi<HistoryPoint[][]>(
+        "GET",
+        `history/period/${start}?filter_entity_id=${entityId}&minimal_response`
+      );
+      if (this._sheetEntityId !== entityId) return; // sheet closed/changed while fetching
+      this._historyPoints = result?.[0] ?? [];
+    } catch {
+      if (this._sheetEntityId === entityId) this._historyPoints = [];
+    }
+  }
+
+  private _openQuickActions() {
+    if (!this._config.quick_actions?.length) return;
+    this._quickActionsOpen = true;
+  }
+
+  private _closeQuickActions() {
+    this._quickActionsOpen = false;
   }
 
   private _runQuickAction(action: SmartphoneCardQuickAction) {
@@ -123,6 +157,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const data: Record<string, unknown> = {};
     if (action.entity_id) data.entity_id = action.entity_id;
     this.hass.callService(domain, service, data);
+    this._closeQuickActions();
   }
 
   private _renderRow(row: SmartphoneCardRow, onTap: (entityId: string) => void): TemplateResult {
@@ -197,24 +232,40 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const batteryValue = Number(batteryState);
     const batteryLow = !Number.isNaN(batteryValue) && batteryValue <= 20;
     const charging = isOn(hass, sb.charging_entity);
-    const wifiConnected = isOn(hass, sb.wifi_entity);
-    const mobileDataOn = isOn(hass, sb.mobile_data_entity);
+    const wifiConnected = isConnected(hass, sb.wifi_entity);
+    const mobileDataOn = isConnected(hass, sb.mobile_data_entity);
     const now = new Date();
     const time = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
     const tapIcon = (entityId?: string) => (entityId ? this._openSheet(entityId) : undefined);
+    const hasQuickActions = !!this._config.quick_actions?.length;
+    const frameStyle = this._config.frame_color ? `background:${this._config.frame_color};` : "";
 
     return html`
       <ha-card>
         <div class="phone">
-          <div class="phone-frame">
+          <div class="phone-frame" style=${frameStyle}>
             <div class="phone-screen">
-              <div class="notch"></div>
+              <div
+                class="notch ${hasQuickActions ? "tappable" : ""}"
+                role=${hasQuickActions ? "button" : nothing}
+                tabindex=${hasQuickActions ? "0" : nothing}
+                @click=${() => this._openQuickActions()}
+                @keydown=${(e: KeyboardEvent) => (e.key === "Enter" || e.key === " ") && this._openQuickActions()}
+              ></div>
               <div class="status-bar">
                 <div class="status-left">
                   <span class="clock">${time}</span>
                 </div>
-                <div class="status-center">${deviceName}</div>
+                <div
+                  class="status-center ${hasQuickActions ? "tappable" : ""}"
+                  role=${hasQuickActions ? "button" : nothing}
+                  tabindex=${hasQuickActions ? "0" : nothing}
+                  @click=${() => this._openQuickActions()}
+                  @keydown=${(e: KeyboardEvent) => (e.key === "Enter" || e.key === " ") && this._openQuickActions()}
+                >
+                  ${deviceName}
+                </div>
                 <div class="status-right">
                   ${sb.mobile_data_entity
                     ? html`<ha-icon
@@ -257,32 +308,39 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
                 </div>
               </div>
               <div class="screen-content">
-                ${this._config.quick_actions?.length
-                  ? html`<div class="quick-actions">
-                      ${this._config.quick_actions.map(
-                        (qa) => html`
-                          <button
-                            class="quick-action"
-                            title=${qa.name ?? qa.service}
-                            @click=${() => this._runQuickAction(qa)}
-                          >
-                            <ha-icon icon=${qa.icon ?? "mdi:flash"}></ha-icon>
-                            ${qa.name ? html`<span>${qa.name}</span>` : nothing}
-                          </button>
-                        `
-                      )}
-                    </div>`
-                  : nothing}
                 ${this._config.rows.length
                   ? this._config.rows.map((row) => this._renderRow(row, (id) => this._openSheet(id)))
                   : html`<div class="empty">Add entities in the card settings.</div>`}
               </div>
               <div class="home-indicator"></div>
               ${this._sheetEntityId ? this._renderSheet(this._sheetEntityId) : nothing}
+              ${this._quickActionsOpen ? this._renderQuickActionsSheet() : nothing}
             </div>
           </div>
         </div>
       </ha-card>
+    `;
+  }
+
+  private _renderQuickActionsSheet(): TemplateResult {
+    const actions = this._config.quick_actions ?? [];
+    return html`
+      <div class="sheet-backdrop" @click=${() => this._closeQuickActions()}>
+        <div class="sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">Quick actions</div>
+          <div class="quick-actions-list">
+            ${actions.map(
+              (qa) => html`
+                <button class="quick-action-row" @click=${() => this._runQuickAction(qa)}>
+                  <ha-icon icon=${qa.icon ?? "mdi:flash"}></ha-icon>
+                  <span>${qa.name ?? qa.service}</span>
+                </button>
+              `
+            )}
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -291,7 +349,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const stateObj = hass.states[entityId];
     const domain = computeDomain(entityId);
     const toggleable = isToggleableDomain(domain);
-    const name = stateObj?.attributes?.friendly_name ?? entityId;
+    const name = getEntityDisplayName(hass, entityId);
     const icon = stateObj?.attributes?.icon ?? "mdi:help-circle-outline";
     const unit = stateObj?.attributes?.unit_of_measurement ?? "";
     const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "Unavailable";
@@ -307,6 +365,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               <div class="sheet-value">${value}</div>
             </div>
           </div>
+          ${this._renderHistory()}
           <div class="sheet-actions">
             ${toggleable
               ? html`<mwc-button @click=${() => this._toggleSheetEntity()}>Toggle</mwc-button>`
@@ -321,6 +380,53 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             </mwc-button>
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  private _renderHistory() {
+    const points = this._historyPoints;
+    if (points === undefined) {
+      return html`<div class="sheet-history-loading">Loading 24h history…</div>`;
+    }
+    if (points.length < 2) {
+      return nothing;
+    }
+    return isMostlyNumeric(points) ? this._renderSparkline(points) : this._renderHistoryList(points);
+  }
+
+  private _renderSparkline(points: HistoryPoint[]) {
+    const values = points.map((p) => Number(p.state)).filter((v) => !Number.isNaN(v));
+    if (values.length < 2) return nothing;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const w = 260;
+    const h = 48;
+    const stepX = w / (values.length - 1);
+    const coords = values.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`).join(" ");
+    return html`
+      <div class="sheet-history">
+        <svg class="sheet-sparkline" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+          <polyline points=${coords} fill="none" stroke="var(--primary-color)" stroke-width="2" />
+        </svg>
+        <div class="sheet-history-range"><span>${min}</span><span>${max}</span></div>
+      </div>
+    `;
+  }
+
+  private _renderHistoryList(points: HistoryPoint[]) {
+    const recent = points.slice(-5).reverse();
+    return html`
+      <div class="sheet-history-list">
+        ${recent.map(
+          (p) => html`
+            <div class="sheet-history-row">
+              <span>${p.state}</span>
+              <span>${new Date(p.last_changed).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
+          `
+        )}
       </div>
     `;
   }
@@ -465,6 +571,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
         background: var(--secondary-background-color, rgba(0, 0, 0, 0.2));
         z-index: 2;
       }
+      .notch.tappable,
+      .status-center.tappable {
+        cursor: pointer;
+      }
       .status-bar {
         flex: 0 0 auto;
         display: flex;
@@ -522,34 +632,6 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
         overflow-y: auto;
         padding: 0 14px;
       }
-      .quick-actions {
-        display: flex;
-        gap: 8px;
-        padding: 10px 0;
-        overflow-x: auto;
-      }
-      .quick-action {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        flex-shrink: 0;
-        background: var(--secondary-background-color, rgba(0, 0, 0, 0.04));
-        border: none;
-        border-radius: 14px;
-        padding: 10px 14px;
-        min-width: 56px;
-        color: var(--primary-text-color);
-        font-size: 11px;
-        font-family: inherit;
-        cursor: pointer;
-      }
-      .quick-action:hover {
-        filter: brightness(0.97);
-      }
-      .quick-action ha-icon {
-        color: var(--primary-color);
-      }
       .home-indicator {
         flex: 0 0 auto;
         margin: 8px auto 10px;
@@ -605,6 +687,72 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
         justify-content: flex-end;
         gap: 4px;
         margin-top: 14px;
+      }
+      .sheet-title {
+        color: var(--primary-text-color);
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 10px;
+      }
+      .quick-actions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+      .quick-action-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        background: none;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 6px;
+        color: var(--primary-text-color);
+        font-size: 14px;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .quick-action-row:hover {
+        background: var(--secondary-background-color, rgba(0, 0, 0, 0.04));
+      }
+      .quick-action-row ha-icon {
+        color: var(--primary-color);
+      }
+      .sheet-history {
+        margin-top: 12px;
+      }
+      .sheet-sparkline {
+        width: 100%;
+        height: 48px;
+        display: block;
+      }
+      .sheet-history-range {
+        display: flex;
+        justify-content: space-between;
+        color: var(--secondary-text-color);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      .sheet-history-list {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .sheet-history-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--secondary-text-color);
+      }
+      .sheet-history-loading {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--secondary-text-color);
       }
     `;
   }

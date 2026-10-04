@@ -303,16 +303,15 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
             ></ha-selector>
           </div>
           <div class="row-editor-line">
-            <ha-selector
+            <ha-service-picker
               .hass=${this.hass}
-              .selector=${TEXT_SELECTOR}
-              label="Service (e.g. switch.turn_on)"
+              label="Service"
               .value=${action.service}
               @value-changed=${(e: CustomEvent) => {
                 e.stopPropagation();
                 this._updateQuickAction(index, { service: e.detail.value });
               }}
-            ></ha-selector>
+            ></ha-service-picker>
             <ha-selector
               .hass=${this.hass}
               .selector=${ENTITY_SELECTOR}
@@ -473,7 +472,8 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       .remove {
         color: var(--secondary-text-color);
       }
-      ha-selector {
+      ha-selector,
+      ha-service-picker {
         display: block;
         width: 100%;
       }
