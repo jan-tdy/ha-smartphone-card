@@ -111,11 +111,17 @@ quick_actions:
         command: silent   # normal | silent | vibrate
   - icon: mdi:flashlight
     name: Flashlight
+    type: toggle
     service: notify.mobile_app_sm_a346b
     data:
       message: command_flashlight
       data:
-        command: turn_on   # turn_on | turn_off
+        command: turn_on
+    service_off: notify.mobile_app_sm_a346b
+    data_off:
+      message: command_flashlight
+      data:
+        command: turn_off
   - icon: mdi:refresh
     name: Refresh sensors
     service: notify.mobile_app_sm_a346b
@@ -123,7 +129,7 @@ quick_actions:
       message: command_update_sensors
   - icon: mdi:lightbulb-outline
     name: Toggle lamp
-    service: switch.toggle
+    type: toggle
     entity_id: switch.living_room_lamp
   - icon: mdi:message-text
     name: Send message
