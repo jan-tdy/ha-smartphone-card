@@ -240,6 +240,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const tapIcon = (entityId?: string) => (entityId ? this._openSheet(entityId) : undefined);
     const hasQuickActions = !!this._config.quick_actions?.length;
     const frameStyle = this._config.frame_color ? `background:${this._config.frame_color};` : "";
+    const notchColor = this._config.notch_color ?? this._config.frame_color;
+    const notchStyle = notchColor ? `background:${notchColor};` : "";
 
     return html`
       <ha-card>
@@ -248,6 +250,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             <div class="phone-screen">
               <div
                 class="notch ${hasQuickActions ? "tappable" : ""}"
+                style=${notchStyle}
                 role=${hasQuickActions ? "button" : nothing}
                 tabindex=${hasQuickActions ? "0" : nothing}
                 @click=${() => this._openQuickActions()}

@@ -37,4 +37,5 @@ export interface SmartphoneCardConfig extends LovelaceCardConfig {
   rows: SmartphoneCardRow[];
   quick_actions?: SmartphoneCardQuickAction[];
   frame_color?: string;
+  notch_color?: string;
 }

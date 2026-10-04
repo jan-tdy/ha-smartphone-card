@@ -98,6 +98,8 @@ Tap the camera notch or the device name in the status bar to open a sheet listin
 
 `frame_color` (phone mode only) sets the bezel color around the screen — otherwise it falls back to the theme's `--secondary-background-color`, which can look off in some themes. Any CSS color works, e.g. `"#3a3a3c"` (space gray), `"#f5f5f0"` (off-white), or a theme variable like `"var(--divider-color)"`.
 
+`notch_color` sets the camera-notch color separately; it defaults to `frame_color` so the notch blends into the bezel.
+
 ## Sensor-reading Wi-Fi/mobile icons
 
 If `status_bar.wifi_entity` or `status_bar.mobile_data_entity` happens to hold a numeric signal reading (a `%` or dBm-style sensor) instead of a plain on/off sensor, the status bar icon shows a signal-strength tier instead of a flat connected/disconnected icon.

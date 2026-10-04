@@ -351,58 +351,59 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           ${this._config.rows.length?this._config.rows.map(t=>this._renderRow(t,t=>this._showMoreInfo(t))):j`<div class="empty">Add entities in the card settings.</div>`}
         </div>
       </ha-card>
-    `}_renderPhone(){var t,e,i,o;const n=this.hass,r=null!==(t=this._config.status_bar)&&void 0!==t?t:{},a=null!==(i=null!==(e=this._config.device_name)&&void 0!==e?e:this._config.title)&&void 0!==i?i:"Smartphone",s=function(t,e){var i;if(e)return null===(i=t.states[e])||void 0===i?void 0:i.state}(n,r.battery_entity),l=Number(s),c=!Number.isNaN(l)&&l<=20,d=function(t,e){if(!e)return!1;const i=t.states[e];return!!i&&("on"===i.state||"home"===i.state||"connected"===i.state)}(n,r.charging_entity),h=At(n,r.wifi_entity),u=At(n,r.mobile_data_entity),p=(new Date).toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"}),v=t=>t?this._openSheet(t):void 0,f=!!(null===(o=this._config.quick_actions)||void 0===o?void 0:o.length),g=this._config.frame_color?`background:${this._config.frame_color};`:"";return j`
+    `}_renderPhone(){var t,e,i,o,n;const r=this.hass,a=null!==(t=this._config.status_bar)&&void 0!==t?t:{},s=null!==(i=null!==(e=this._config.device_name)&&void 0!==e?e:this._config.title)&&void 0!==i?i:"Smartphone",l=function(t,e){var i;if(e)return null===(i=t.states[e])||void 0===i?void 0:i.state}(r,a.battery_entity),c=Number(l),d=!Number.isNaN(c)&&c<=20,h=function(t,e){if(!e)return!1;const i=t.states[e];return!!i&&("on"===i.state||"home"===i.state||"connected"===i.state)}(r,a.charging_entity),u=At(r,a.wifi_entity),p=At(r,a.mobile_data_entity),v=(new Date).toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"}),f=t=>t?this._openSheet(t):void 0,g=!!(null===(o=this._config.quick_actions)||void 0===o?void 0:o.length),m=this._config.frame_color?`background:${this._config.frame_color};`:"",b=null!==(n=this._config.notch_color)&&void 0!==n?n:this._config.frame_color;return j`
       <ha-card>
         <div class="phone">
-          <div class="phone-frame" style=${g}>
+          <div class="phone-frame" style=${m}>
             <div class="phone-screen">
               <div
-                class="notch ${f?"tappable":""}"
-                role=${f?"button":B}
-                tabindex=${f?"0":B}
+                class="notch ${g?"tappable":""}"
+                style=${b?`background:${b};`:""}
+                role=${g?"button":B}
+                tabindex=${g?"0":B}
                 @click=${()=>this._openQuickActions()}
                 @keydown=${t=>("Enter"===t.key||" "===t.key)&&this._openQuickActions()}
               ></div>
               <div class="status-bar">
                 <div class="status-left">
-                  <span class="clock">${p}</span>
+                  <span class="clock">${v}</span>
                 </div>
                 <div
-                  class="status-center ${f?"tappable":""}"
-                  role=${f?"button":B}
-                  tabindex=${f?"0":B}
+                  class="status-center ${g?"tappable":""}"
+                  role=${g?"button":B}
+                  tabindex=${g?"0":B}
                   @click=${()=>this._openQuickActions()}
                   @keydown=${t=>("Enter"===t.key||" "===t.key)&&this._openQuickActions()}
                 >
-                  ${a}
+                  ${s}
                 </div>
                 <div class="status-right">
-                  ${r.mobile_data_entity?j`<ha-icon
+                  ${a.mobile_data_entity?j`<ha-icon
+                        class="status-icon ${p?"on":"off"}"
+                        icon=${function(t,e){var i,o;const n=e?t.states[e]:void 0,r=n?Number(n.state):NaN;if(n&&!Number.isNaN(r)){const t=null!==(o=null===(i=n.attributes)||void 0===i?void 0:i.unit_of_measurement)&&void 0!==o?o:"";return`mdi:signal-cellular-${Math.min(3,xt(r,t))}`}return"mdi:signal-cellular-3"}(r,a.mobile_data_entity)}
+                        role="button"
+                        tabindex="0"
+                        @click=${()=>f(a.mobile_data_entity)}
+                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&f(a.mobile_data_entity)}
+                      ></ha-icon>`:B}
+                  ${a.wifi_entity?j`<ha-icon
                         class="status-icon ${u?"on":"off"}"
-                        icon=${function(t,e){var i,o;const n=e?t.states[e]:void 0,r=n?Number(n.state):NaN;if(n&&!Number.isNaN(r)){const t=null!==(o=null===(i=n.attributes)||void 0===i?void 0:i.unit_of_measurement)&&void 0!==o?o:"";return`mdi:signal-cellular-${Math.min(3,xt(r,t))}`}return"mdi:signal-cellular-3"}(n,r.mobile_data_entity)}
+                        icon=${function(t,e,i){var o,n;const r=e?t.states[e]:void 0,a=r?Number(r.state):NaN;if(r&&!Number.isNaN(a))return`mdi:wifi-strength-${xt(a,null!==(n=null===(o=r.attributes)||void 0===o?void 0:o.unit_of_measurement)&&void 0!==n?n:"")}`;return i?"mdi:wifi":"mdi:wifi-off"}(r,a.wifi_entity,u)}
                         role="button"
                         tabindex="0"
-                        @click=${()=>v(r.mobile_data_entity)}
-                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&v(r.mobile_data_entity)}
+                        @click=${()=>f(a.wifi_entity)}
+                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&f(a.wifi_entity)}
                       ></ha-icon>`:B}
-                  ${r.wifi_entity?j`<ha-icon
-                        class="status-icon ${h?"on":"off"}"
-                        icon=${function(t,e,i){var o,n;const r=e?t.states[e]:void 0,a=r?Number(r.state):NaN;if(r&&!Number.isNaN(a))return`mdi:wifi-strength-${xt(a,null!==(n=null===(o=r.attributes)||void 0===o?void 0:o.unit_of_measurement)&&void 0!==n?n:"")}`;return i?"mdi:wifi":"mdi:wifi-off"}(n,r.wifi_entity,h)}
+                  ${a.battery_entity?j`<span
+                        class="battery-pill ${h?"charging":""} ${d&&!h?"low":""}"
                         role="button"
                         tabindex="0"
-                        @click=${()=>v(r.wifi_entity)}
-                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&v(r.wifi_entity)}
-                      ></ha-icon>`:B}
-                  ${r.battery_entity?j`<span
-                        class="battery-pill ${d?"charging":""} ${c&&!d?"low":""}"
-                        role="button"
-                        tabindex="0"
-                        @click=${()=>v(r.battery_entity)}
-                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&v(r.battery_entity)}
+                        @click=${()=>f(a.battery_entity)}
+                        @keydown=${t=>("Enter"===t.key||" "===t.key)&&f(a.battery_entity)}
                       >
-                        ${d?j`<ha-icon class="status-icon" icon="mdi:lightning-bolt"></ha-icon>`:B}
-                        <ha-icon class="status-icon" icon=${this._batteryIcon(s,d)}></ha-icon>
-                        <span>${null!=s?s:"—"}%</span>
+                        ${h?j`<ha-icon class="status-icon" icon="mdi:lightning-bolt"></ha-icon>`:B}
+                        <ha-icon class="status-icon" icon=${this._batteryIcon(l,h)}></ha-icon>
+                        <span>${null!=l?l:"—"}%</span>
                       </span>`:B}
                 </div>
               </div>
