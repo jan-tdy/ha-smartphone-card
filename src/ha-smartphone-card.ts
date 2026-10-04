@@ -365,7 +365,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               <div class="sheet-value">${value}</div>
             </div>
           </div>
-          ${this._renderHistory()}
+          ${this._renderHistory(unit)}
           <div class="sheet-actions">
             ${toggleable
               ? html`<mwc-button @click=${() => this._toggleSheetEntity()}>Toggle</mwc-button>`
@@ -384,7 +384,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  private _renderHistory() {
+  private _renderHistory(unit: string) {
     const points = this._historyPoints;
     if (points === undefined) {
       return html`<div class="sheet-history-loading">Loading 24h history…</div>`;
@@ -392,27 +392,74 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     if (points.length < 2) {
       return nothing;
     }
-    return isMostlyNumeric(points) ? this._renderSparkline(points) : this._renderHistoryList(points);
+    return isMostlyNumeric(points) ? this._renderSparkline(points, unit) : this._renderHistoryList(points);
   }
 
-  private _renderSparkline(points: HistoryPoint[]) {
+  private _renderSparkline(points: HistoryPoint[], unit: string) {
     const values = points.map((p) => Number(p.state)).filter((v) => !Number.isNaN(v));
     if (values.length < 2) return nothing;
     const min = Math.min(...values);
     const max = Math.max(...values);
+    const mid = (min + max) / 2;
     const range = max - min || 1;
-    const w = 260;
-    const h = 48;
+    const w = 230;
+    const h = 44;
     const stepX = w / (values.length - 1);
-    const coords = values.map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`).join(" ");
+    const coords = values
+      .map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
+      .join(" ");
+    const fmt = (v: number) => `${Math.round(v * 10) / 10}${unit ? ` ${unit}` : ""}`;
+
+    const startTime = this._formatHistoryTime(points[0].last_changed);
+    const endTime = this._formatHistoryTime(points[points.length - 1].last_changed);
+    const midTime = this._formatHistoryTime(points[Math.floor(points.length / 2)].last_changed);
+
     return html`
       <div class="sheet-history">
-        <svg class="sheet-sparkline" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-          <polyline points=${coords} fill="none" stroke="var(--primary-color)" stroke-width="2" />
-        </svg>
-        <div class="sheet-history-range"><span>${min}</span><span>${max}</span></div>
+        <div class="sheet-chart">
+          <div class="sheet-chart-yaxis">
+            <span>${fmt(max)}</span>
+            <span>${fmt(mid)}</span>
+            <span>${fmt(min)}</span>
+          </div>
+          <svg class="sheet-sparkline" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+            <line class="sheet-chart-gridline" x1="0" y1="1" x2=${w} y2="1" vector-effect="non-scaling-stroke" />
+            <line
+              class="sheet-chart-gridline"
+              x1="0"
+              y1=${h / 2}
+              x2=${w}
+              y2=${h / 2}
+              vector-effect="non-scaling-stroke"
+            />
+            <line
+              class="sheet-chart-gridline"
+              x1="0"
+              y1=${h - 1}
+              x2=${w}
+              y2=${h - 1}
+              vector-effect="non-scaling-stroke"
+            />
+            <polyline
+              points=${coords}
+              fill="none"
+              stroke="var(--primary-color)"
+              stroke-width="2"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+        <div class="sheet-history-time-axis">
+          <span>${startTime}</span>
+          <span>${midTime}</span>
+          <span>${endTime}</span>
+        </div>
       </div>
     `;
+  }
+
+  private _formatHistoryTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   }
 
   private _renderHistoryList(points: HistoryPoint[]) {
@@ -423,7 +470,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
           (p) => html`
             <div class="sheet-history-row">
               <span>${p.state}</span>
-              <span>${new Date(p.last_changed).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+              <span>${this._formatHistoryTime(p.last_changed)}</span>
             </div>
           `
         )}
@@ -725,17 +772,37 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       .sheet-history {
         margin-top: 12px;
       }
+      .sheet-chart {
+        display: flex;
+        align-items: stretch;
+        gap: 6px;
+      }
+      .sheet-chart-yaxis {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        color: var(--secondary-text-color);
+        font-size: 10px;
+        text-align: right;
+        white-space: nowrap;
+      }
       .sheet-sparkline {
-        width: 100%;
-        height: 48px;
+        flex: 1;
+        min-width: 0;
+        height: 44px;
         display: block;
       }
-      .sheet-history-range {
+      .sheet-chart-gridline {
+        stroke: var(--divider-color, rgba(0, 0, 0, 0.12));
+        stroke-width: 1;
+      }
+      .sheet-history-time-axis {
         display: flex;
         justify-content: space-between;
         color: var(--secondary-text-color);
-        font-size: 11px;
-        margin-top: 2px;
+        font-size: 10px;
+        margin-top: 4px;
+        padding-left: 34px;
       }
       .sheet-history-list {
         margin-top: 10px;
