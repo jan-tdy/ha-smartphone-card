@@ -51,6 +51,7 @@ rows:
 type: custom:ha-smartphone-card
 mode: phone
 device_name: SM-A346B
+frame_color: "#3a3a3c"
 status_bar:
   battery_entity: sensor.sm_a346b_battery_level
   charging_entity: binary_sensor.sm_a346b_is_charging
@@ -91,7 +92,11 @@ quick_actions:
     entity_id: switch.sm_a346b_do_not_disturb
 ```
 
-Renders as a row of tappable chips above the entity list. `service` is `domain.service`; `entity_id` (optional) is passed as the service call's target.
+Tap the camera notch or the device name in the status bar to open a sheet listing these as tappable rows. `service` is `domain.service`; `entity_id` (optional) is passed as the service call's target.
+
+## Phone frame color
+
+`frame_color` (phone mode only) sets the bezel color around the screen — otherwise it falls back to the theme's `--secondary-background-color`, which can look off in some themes. Any CSS color works, e.g. `"#3a3a3c"` (space gray), `"#f5f5f0"` (off-white), or a theme variable like `"var(--divider-color)"`.
 
 ## Sensor-reading Wi-Fi/mobile icons
 
