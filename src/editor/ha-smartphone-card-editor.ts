@@ -4,7 +4,7 @@ import { HomeAssistant, LovelaceCardEditor, fireEvent } from "custom-card-helper
 import Sortable from "sortablejs";
 import { EDITOR_TYPE } from "../const";
 import { SmartphoneCardConfig, SmartphoneCardQuickAction, SmartphoneCardRow } from "../types";
-import { EntityRegistryEntry } from "../helpers";
+import { COMMON_ANDROID_APPS, EntityRegistryEntry } from "../helpers";
 
 const MODE_SELECTOR = {
   select: {
@@ -40,34 +40,12 @@ const QUICK_ACTION_TYPE_SELECTOR = {
   },
 } as const;
 
-// A curated shortlist of common Android package names, searchable in the
-// dropdown; custom_value lets anyone type a package that isn't listed.
+// custom_value lets anyone type a package that isn't in the curated list.
 const APP_SELECTOR = {
   select: {
     mode: "dropdown",
     custom_value: true,
-    options: [
-      { value: "com.whatsapp", label: "WhatsApp" },
-      { value: "com.android.chrome", label: "Chrome" },
-      { value: "com.google.android.gm", label: "Gmail" },
-      { value: "com.google.android.apps.maps", label: "Google Maps" },
-      { value: "com.google.android.youtube", label: "YouTube" },
-      { value: "com.spotify.music", label: "Spotify" },
-      { value: "com.instagram.android", label: "Instagram" },
-      { value: "com.facebook.katana", label: "Facebook" },
-      { value: "com.facebook.orca", label: "Messenger" },
-      { value: "org.telegram.messenger", label: "Telegram" },
-      { value: "org.thoughtcrime.securesms", label: "Signal" },
-      { value: "com.twitter.android", label: "X (Twitter)" },
-      { value: "com.android.camera2", label: "Camera" },
-      { value: "com.android.dialer", label: "Phone" },
-      { value: "com.android.vending", label: "Play Store" },
-      { value: "io.homeassistant.companion.android", label: "Home Assistant" },
-      { value: "com.netflix.mediaclient", label: "Netflix" },
-      { value: "com.google.android.apps.photos", label: "Google Photos" },
-      { value: "com.google.android.calendar", label: "Google Calendar" },
-      { value: "com.google.android.deskclock", label: "Clock" },
-    ],
+    options: COMMON_ANDROID_APPS,
   },
 } as const;
 
@@ -386,7 +364,7 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
                     <ha-selector
                       .hass=${this.hass}
                       .selector=${APP_SELECTOR}
-                      label="App to launch (pick one or type a package name)"
+                      label="App to launch (optional – leave empty to pick the app each time you tap this action)"
                       .value=${action.package_name ?? ""}
                       @value-changed=${(e: CustomEvent) => {
                         e.stopPropagation();

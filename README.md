@@ -162,6 +162,16 @@ quick_actions:
 
 The editor's app picker is a searchable dropdown pre-filled with common apps (WhatsApp, Chrome, Gmail, Maps, Spotify, Instagram...) but also takes any custom package name you type — there's no API for Home Assistant to list what's actually installed on the phone, so pick from the list or type the package name yourself (it's the id shown on the app's Play Store URL, e.g. `play.google.com/store/apps/details?id=com.whatsapp`). This uses the same `command_launch_app` companion-app command as a `type: service` quick action would, just with a dedicated picker instead of hand-writing the `data` object. **Requires the "Display over other apps" permission**, which the app will prompt for the first time you use it.
 
+Leave `package_name` empty to pick the app at tap time instead of fixing one in the config — tapping the action then opens the same searchable picker right in the card, so one "Launch app" quick action can launch anything instead of needing one action per app:
+
+```yaml
+quick_actions:
+  - icon: mdi:apps
+    name: Launch app…
+    type: app
+    service: notify.mobile_app_sm_a346b
+```
+
 ### Toggle quick actions
 
 Some commands are naturally on/off rather than one-shot — a flashlight, Do Not Disturb, a switch — and showing them as a switch instead of a tap-to-fire button is clearer:
