@@ -184,6 +184,17 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       this._toggleQuickAction(action, index);
       return;
     }
+    if (action.type === "app") {
+      const [domain, service] = (action.service ?? "").split(".");
+      if (domain && service && action.package_name) {
+        this.hass.callService(domain, service, {
+          message: "command_launch_app",
+          data: { package_name: action.package_name },
+        });
+      }
+      this._closeQuickActions();
+      return;
+    }
     const [domain, service] = (action.service ?? "").split(".");
     if (!domain || !service) return;
     const data: Record<string, unknown> = { ...action.data };
@@ -477,7 +488,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               return html`
                 <button class="quick-action-row" @click=${() => this._runQuickAction(qa, index)}>
                   <ha-icon icon=${qa.icon ?? "mdi:flash"}></ha-icon>
-                  <span>${qa.name ?? qa.service ?? qa.entity_id ?? "Quick action"}</span>
+                  <span>${qa.name ?? qa.package_name ?? qa.service ?? qa.entity_id ?? "Quick action"}</span>
                   ${isToggle ? html`<ha-switch .checked=${on} tabindex="-1"></ha-switch>` : nothing}
                 </button>
               `;
