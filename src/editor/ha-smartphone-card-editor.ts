@@ -23,15 +23,28 @@ const ROW_TYPE_SELECTOR = {
       { value: "text", label: "Text" },
       { value: "bar", label: "Bar (percentage)" },
       { value: "icon", label: "Icon only" },
+      { value: "message", label: "Send message (compose dialog)" },
+    ],
+  },
+} as const;
+
+const QUICK_ACTION_TYPE_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    options: [
+      { value: "service", label: "Run a service" },
+      { value: "message", label: "Send message (compose dialog)" },
     ],
   },
 } as const;
 
 const ENTITY_SELECTOR = { entity: {} } as const;
+const NOTIFY_ENTITY_SELECTOR = { entity: { domain: "notify" } } as const;
 const ICON_SELECTOR = { icon: {} } as const;
 const TEXT_SELECTOR = { text: {} } as const;
 const NUMBER_SELECTOR = { number: { mode: "box" } } as const;
 const DEVICE_SELECTOR = { device: {} } as const;
+const OBJECT_SELECTOR = { object: {} } as const;
 
 @customElement(EDITOR_TYPE)
 export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEditor {
@@ -277,6 +290,7 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
   }
 
   private _renderQuickActionEditor(action: SmartphoneCardQuickAction, index: number): TemplateResult {
+    const qaType = action.type ?? "service";
     return html`
       <div class="row-editor">
         <div class="row-editor-fields">
@@ -302,27 +316,60 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               }}
             ></ha-selector>
           </div>
-          <div class="row-editor-line">
-            <ha-service-picker
-              .hass=${this.hass}
-              label="Service"
-              .value=${action.service}
-              @value-changed=${(e: CustomEvent) => {
-                e.stopPropagation();
-                this._updateQuickAction(index, { service: e.detail.value });
-              }}
-            ></ha-service-picker>
-            <ha-selector
-              .hass=${this.hass}
-              .selector=${ENTITY_SELECTOR}
-              label="Target entity (optional)"
-              .value=${action.entity_id ?? ""}
-              @value-changed=${(e: CustomEvent) => {
-                e.stopPropagation();
-                this._updateQuickAction(index, { entity_id: e.detail.value });
-              }}
-            ></ha-selector>
-          </div>
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${QUICK_ACTION_TYPE_SELECTOR}
+            label="Action type"
+            .value=${qaType}
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateQuickAction(index, { type: e.detail.value });
+            }}
+          ></ha-selector>
+          ${qaType === "message"
+            ? html`<ha-selector
+                .hass=${this.hass}
+                .selector=${NOTIFY_ENTITY_SELECTOR}
+                label="Notify entity"
+                .value=${action.service}
+                @value-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this._updateQuickAction(index, { service: e.detail.value });
+                }}
+              ></ha-selector>`
+            : html`
+                <div class="row-editor-line">
+                  <ha-service-picker
+                    .hass=${this.hass}
+                    label="Service"
+                    .value=${action.service}
+                    @value-changed=${(e: CustomEvent) => {
+                      e.stopPropagation();
+                      this._updateQuickAction(index, { service: e.detail.value });
+                    }}
+                  ></ha-service-picker>
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${ENTITY_SELECTOR}
+                    label="Target entity (optional)"
+                    .value=${action.entity_id ?? ""}
+                    @value-changed=${(e: CustomEvent) => {
+                      e.stopPropagation();
+                      this._updateQuickAction(index, { entity_id: e.detail.value });
+                    }}
+                  ></ha-selector>
+                </div>
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${OBJECT_SELECTOR}
+                  label="Service data (optional)"
+                  .value=${action.data ?? {}}
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateQuickAction(index, { data: e.detail.value });
+                  }}
+                ></ha-selector>
+              `}
         </div>
         <ha-icon-button class="remove" @click=${() => this._removeQuickAction(index)}>
           <ha-icon icon="mdi:close"></ha-icon>
@@ -332,14 +379,15 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
   }
 
   private _renderRowEditor(row: SmartphoneCardRow, index: number): TemplateResult {
+    const isMessage = row.type === "message";
     return html`
       <div class="row-editor">
         <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
         <div class="row-editor-fields">
           <ha-selector
             .hass=${this.hass}
-            .selector=${ENTITY_SELECTOR}
-            label="Entity"
+            .selector=${isMessage ? NOTIFY_ENTITY_SELECTOR : ENTITY_SELECTOR}
+            label=${isMessage ? "Notify entity" : "Entity"}
             .value=${row.entity}
             @value-changed=${(e: CustomEvent) => {
               e.stopPropagation();
@@ -378,6 +426,18 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               }}
             ></ha-selector>
           </div>
+          ${isMessage
+            ? nothing
+            : html`<ha-selector
+                .hass=${this.hass}
+                .selector=${TEXT_SELECTOR}
+                label="Value attribute (optional, e.g. app_name)"
+                .value=${row.value_attribute ?? ""}
+                @value-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this._updateRow(index, { value_attribute: e.detail.value || undefined });
+                }}
+              ></ha-selector>`}
           ${row.type === "bar"
             ? html`<div class="row-editor-line">
                 <ha-selector

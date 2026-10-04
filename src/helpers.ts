@@ -62,7 +62,7 @@ export function getRowUnit(hass: HomeAssistant, row: SmartphoneCardRow): string 
   return stateObj?.attributes?.unit_of_measurement ?? "";
 }
 
-export function getRowDisplayType(hass: HomeAssistant, row: SmartphoneCardRow): "text" | "bar" | "icon" {
+export function getRowDisplayType(hass: HomeAssistant, row: SmartphoneCardRow): "text" | "bar" | "icon" | "message" {
   if (row.type) return row.type;
   const stateObj = getRowState(hass, row);
   if (!stateObj) return "text";
@@ -89,6 +89,14 @@ export function getRowPercent(hass: HomeAssistant, row: SmartphoneCardRow): numb
 export function getRowDisplayValue(hass: HomeAssistant, row: SmartphoneCardRow): string {
   const stateObj = getRowState(hass, row);
   if (!stateObj) return "—";
+
+  if (row.value_attribute) {
+    const attrValue = stateObj.attributes?.[row.value_attribute];
+    if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
+      return String(attrValue);
+    }
+  }
+
   const unit = getRowUnit(hass, row);
   return unit ? `${stateObj.state} ${unit}` : stateObj.state;
 }
