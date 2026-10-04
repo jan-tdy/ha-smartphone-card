@@ -20,18 +20,18 @@ interface DeviceRegistryEntry {
   name_by_user?: string | null;
 }
 
-export function getRowName(hass: HomeAssistant, row: SmartphoneCardRow): string {
-  if (row.name) return row.name;
+/** Display name for an entity with the device name HA prepends to
+ * `friendly_name` stripped off (e.g. "SM-A346B Battery level" -> "Battery level"). */
+export function getEntityDisplayName(hass: HomeAssistant, entityId: string): string {
+  const stateObj = hass.states[entityId];
+  const friendlyName = stateObj?.attributes?.friendly_name ?? entityId;
 
-  const stateObj = getRowState(hass, row);
-  const friendlyName = stateObj?.attributes?.friendly_name ?? row.entity;
-
-  const entityEntry = ((hass as any).entities as Record<string, EntityRegistryEntry> | undefined)?.[row.entity];
+  const entityEntry = ((hass as any).entities as Record<string, EntityRegistryEntry> | undefined)?.[entityId];
   if (entityEntry?.name) return entityEntry.name;
   if (entityEntry?.original_name) return entityEntry.original_name;
 
   // Entity has no per-entity name in the registry: fall back to stripping the
-  // device name HA prepends to friendly_name (e.g. "SM-A346B Battery level").
+  // device name HA prepends to friendly_name.
   const deviceId = entityEntry?.device_id;
   const device = deviceId
     ? ((hass as any).devices as Record<string, DeviceRegistryEntry> | undefined)?.[deviceId]
@@ -43,6 +43,11 @@ export function getRowName(hass: HomeAssistant, row: SmartphoneCardRow): string 
   }
 
   return friendlyName;
+}
+
+export function getRowName(hass: HomeAssistant, row: SmartphoneCardRow): string {
+  if (row.name) return row.name;
+  return getEntityDisplayName(hass, row.entity);
 }
 
 export function getRowIcon(hass: HomeAssistant, row: SmartphoneCardRow): string | undefined {
@@ -163,7 +168,41 @@ export function isOn(hass: HomeAssistant, entityId?: string): boolean {
   return stateObj.state === "on" || stateObj.state === "home" || stateObj.state === "connected";
 }
 
+const DISCONNECTED_STATES = new Set([
+  "off",
+  "unavailable",
+  "unknown",
+  "not_connected",
+  "not connected",
+  "disconnected",
+  "none",
+  "",
+]);
+
+/**
+ * Some companion-app sensors (e.g. "Wi-Fi Connection") report the SSID or
+ * carrier name as their state instead of a plain on/off, so "connected"
+ * means "anything other than one of the known not-connected states".
+ */
+export function isConnected(hass: HomeAssistant, entityId?: string): boolean {
+  if (!entityId) return false;
+  const stateObj = hass.states[entityId];
+  if (!stateObj) return false;
+  return !DISCONNECTED_STATES.has(stateObj.state.toLowerCase());
+}
+
 export function stateOf(hass: HomeAssistant, entityId?: string): string | undefined {
   if (!entityId) return undefined;
   return hass.states[entityId]?.state;
+}
+
+export interface HistoryPoint {
+  state: string;
+  last_changed: string;
+}
+
+export function isMostlyNumeric(points: HistoryPoint[]): boolean {
+  if (!points.length) return false;
+  const numeric = points.filter((p) => p.state !== "" && !Number.isNaN(Number(p.state)));
+  return numeric.length / points.length > 0.8;
 }
