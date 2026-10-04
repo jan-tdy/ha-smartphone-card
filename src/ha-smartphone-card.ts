@@ -1,10 +1,11 @@
-import { LitElement, html, css, CSSResultGroup, TemplateResult, nothing } from "lit";
+import { LitElement, html, svg, css, CSSResultGroup, SVGTemplateResult, TemplateResult, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, computeDomain, toggleEntity } from "custom-card-helpers";
 import { CARD_TYPE, EDITOR_TYPE } from "./const";
 import { SmartphoneCardConfig, SmartphoneCardQuickAction, SmartphoneCardRow } from "./types";
 import {
   COMMON_ANDROID_APPS,
+  formatLocationState,
   getBarColor,
   getCellularIcon,
   getRowDisplayType,
@@ -17,9 +18,12 @@ import {
   getWifiIcon,
   HistoryPoint,
   isConnected,
+  isLocationEntity,
   isMostlyNumeric,
   isOn,
   isToggleableDomain,
+  latLonToPixel,
+  LocationHistoryPoint,
   stateOf,
 } from "./helpers";
 import "./editor/ha-smartphone-card-editor";
@@ -64,6 +68,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _localToggleStates: Record<number, boolean> = {};
 
   @state() private _historyPoints?: HistoryPoint[];
+
+  @state() private _locationHistory?: LocationHistoryPoint[];
 
   @state() private _composeTarget?: { service: string; name?: string };
 
@@ -152,12 +158,18 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     if (!entityId) return;
     this._sheetEntityId = entityId;
     this._historyPoints = undefined;
-    this._loadHistory(entityId);
+    this._locationHistory = undefined;
+    if (isLocationEntity(this.hass, entityId)) {
+      this._loadLocationHistory(entityId);
+    } else {
+      this._loadHistory(entityId);
+    }
   }
 
   private _closeSheet() {
     this._sheetEntityId = undefined;
     this._historyPoints = undefined;
+    this._locationHistory = undefined;
   }
 
   private _toggleSheetEntity() {
@@ -176,6 +188,29 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       this._historyPoints = result?.[0] ?? [];
     } catch {
       if (this._sheetEntityId === entityId) this._historyPoints = [];
+    }
+  }
+
+  private async _loadLocationHistory(entityId: string) {
+    try {
+      const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // No minimal_response here: that flag strips attributes (lat/lon) from
+      // every point but the first and last, which a location trail needs on all of them.
+      const result = await this.hass.callApi<
+        { state: string; last_changed: string; attributes?: { latitude?: number; longitude?: number } }[][]
+      >("GET", `history/period/${start}?filter_entity_id=${entityId}`);
+      if (this._sheetEntityId !== entityId) return;
+      const points: LocationHistoryPoint[] = (result?.[0] ?? [])
+        .filter((p) => typeof p.attributes?.latitude === "number" && typeof p.attributes?.longitude === "number")
+        .map((p) => ({
+          lat: p.attributes!.latitude as number,
+          lon: p.attributes!.longitude as number,
+          state: p.state,
+          last_changed: p.last_changed,
+        }));
+      this._locationHistory = points;
+    } catch {
+      if (this._sheetEntityId === entityId) this._locationHistory = [];
     }
   }
 
@@ -651,7 +686,12 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const name = getEntityDisplayName(hass, entityId);
     const icon = stateObj?.attributes?.icon ?? "mdi:help-circle-outline";
     const unit = stateObj?.attributes?.unit_of_measurement ?? "";
-    const value = stateObj ? `${stateObj.state}${unit ? ` ${unit}` : ""}` : "Unavailable";
+    const isLocation = isLocationEntity(hass, entityId);
+    const value = !stateObj
+      ? "Unavailable"
+      : isLocation
+        ? formatLocationState(stateObj.state)
+        : `${stateObj.state}${unit ? ` ${unit}` : ""}`;
 
     return html`
       <div class="sheet-backdrop" @click=${() => this._closeSheet()}>
@@ -664,7 +704,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               <div class="sheet-value">${value}</div>
             </div>
           </div>
-          ${this._renderHistory(unit)}
+          ${isLocation ? this._renderLocationMap(entityId) : this._renderHistory(unit)}
           <div class="sheet-actions">
             ${toggleable
               ? html`<button class="sheet-btn primary" @click=${() => this._toggleSheetEntity()}>Toggle</button>`
@@ -774,6 +814,97 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             </div>
           `
         )}
+      </div>
+    `;
+  }
+
+  private _renderLocationMap(entityId: string): TemplateResult {
+    const stateObj = this.hass.states[entityId];
+    const lat = Number(stateObj?.attributes?.latitude);
+    const lon = Number(stateObj?.attributes?.longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      return html`<div class="sheet-history-loading">No location data.</div>`;
+    }
+
+    const zoom = 15;
+    const W = 280;
+    const H = 160;
+    const tileSize = 256;
+    const center = latLonToPixel(lat, lon, zoom);
+    const originX = center.x - W / 2;
+    const originY = center.y - H / 2;
+    const tileCount = Math.pow(2, zoom);
+
+    const startTileX = Math.floor(originX / tileSize);
+    const startTileY = Math.floor(originY / tileSize);
+    const endTileX = Math.floor((originX + W) / tileSize);
+    const endTileY = Math.floor((originY + H) / tileSize);
+
+    const tiles: SVGTemplateResult[] = [];
+    for (let ty = startTileY; ty <= endTileY; ty++) {
+      for (let tx = startTileX; tx <= endTileX; tx++) {
+        const wrappedX = ((tx % tileCount) + tileCount) % tileCount;
+        tiles.push(svg`
+          <image
+            href="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png"
+            x=${tx * tileSize - originX}
+            y=${ty * tileSize - originY}
+            width=${tileSize}
+            height=${tileSize}
+          />
+        `);
+      }
+    }
+
+    const points = this._locationHistory ?? [];
+    const toLocal = (plat: number, plon: number) => {
+      const p = latLonToPixel(plat, plon, zoom);
+      return { x: p.x - originX, y: p.y - originY };
+    };
+    const trail = points.map((p) => toLocal(p.lat, p.lon));
+    const trailCoords = trail.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+    const recent = [...points].reverse().slice(0, 6);
+
+    return html`
+      <div class="location-map">
+        <svg class="location-map-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">
+          <clipPath id="map-clip-${entityId.replace(/[^a-zA-Z0-9]/g, "")}">
+            <rect x="0" y="0" width=${W} height=${H} rx="12" />
+          </clipPath>
+          <g clip-path="url(#map-clip-${entityId.replace(/[^a-zA-Z0-9]/g, "")})">
+            ${tiles}
+            ${trail.length > 1
+              ? svg`<polyline
+                    points=${trailCoords}
+                    fill="none"
+                    stroke="var(--primary-color)"
+                    stroke-width="2"
+                    stroke-opacity="0.8"
+                    vector-effect="non-scaling-stroke"
+                  />`
+              : nothing}
+            ${trail.slice(0, -1).map(
+              (p) => svg`<circle cx=${p.x} cy=${p.y} r="2.5" fill="var(--primary-color)" fill-opacity="0.7" />`
+            )}
+            <circle cx=${W / 2} cy=${H / 2} r="7" fill="var(--primary-color)" stroke="white" stroke-width="2" />
+          </g>
+        </svg>
+        <div class="location-map-attribution">© OpenStreetMap contributors</div>
+        ${recent.length
+          ? html`
+              <div class="location-timeline">
+                ${recent.map(
+                  (p) => html`
+                    <div class="location-timeline-row">
+                      <span>${formatLocationState(p.state)}</span>
+                      <span>${this._formatHistoryTime(p.last_changed)}</span>
+                    </div>
+                  `
+                )}
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -1164,6 +1295,34 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       }
       .sheet-history-loading {
         margin-top: 12px;
+        font-size: 12px;
+        color: var(--secondary-text-color);
+      }
+      .location-map {
+        margin-top: 12px;
+      }
+      .location-map-svg {
+        width: 100%;
+        height: 160px;
+        display: block;
+        border-radius: 12px;
+        background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+      }
+      .location-map-attribution {
+        margin-top: 4px;
+        font-size: 9px;
+        color: var(--secondary-text-color);
+        text-align: right;
+      }
+      .location-timeline {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .location-timeline-row {
+        display: flex;
+        justify-content: space-between;
         font-size: 12px;
         color: var(--secondary-text-color);
       }

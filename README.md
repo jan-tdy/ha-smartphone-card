@@ -9,7 +9,7 @@ Installable via HACS (custom repository), fully configurable through a visual ed
 ## Modes
 
 - **list** – rows styled like the official `entities` card. Percentage/battery values can also be rendered as a progress bar.
-- **phone** – the card looks like a phone (rounded frame, notch, status bar with clock, Wi-Fi/mobile data and battery), with a "screen" showing the other selected entities (location, brightness, last used app, steps...). Tapping a row or a status bar icon opens a small in-phone detail sheet (icon, name, state, a toggle button for toggleable domains, and a "More details" link to Home Assistant's own dialog) instead of leaving the phone illustration. In list mode, tapping a row opens Home Assistant's standard more-info dialog directly.
+- **phone** – the card looks like a phone (rounded frame, notch, status bar with clock, Wi-Fi/mobile data and battery), with a "screen" showing the other selected entities (location, brightness, last used app, steps...). Tapping a row or a status bar icon opens a small in-phone detail sheet (icon, name, state, a toggle button for toggleable domains, and a "More details" link to Home Assistant's own dialog) instead of leaving the phone illustration. For a `device_tracker`/`person` entity (or any entity with `latitude`/`longitude` attributes), the sheet shows a small OpenStreetMap view centered on the current position with the last 24h of movement traced as a line, plus a timeline list of state changes (e.g. Home → Not home) below it, instead of the usual bar/sparkline history. In list mode, tapping a row opens Home Assistant's standard more-info dialog directly (which already has its own map for location entities).
 
 ## Installation
 
