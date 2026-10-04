@@ -24,7 +24,7 @@ Installable via HACS (custom repository), fully configurable through a visual ed
 
 ## Configuration
 
-The recommended way is through the card's visual editor (Add Card → Smartphone Card). Below is an example YAML.
+The recommended way is through the card's visual editor (Add Card → Smartphone Card), which uses Home Assistant's own selector dropdowns, entity/device pickers and icon picker. The editor also has an "Add entities from a device" picker: pick the phone's device and it bulk-adds a row for every one of its entities. Below is an example YAML.
 
 ### List
 

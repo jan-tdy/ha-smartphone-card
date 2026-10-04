@@ -3,19 +3,49 @@ import { customElement, property, state, query } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCardEditor, fireEvent } from "custom-card-helpers";
 import Sortable from "sortablejs";
 import { EDITOR_TYPE } from "../const";
-import { SmartphoneCardConfig, SmartphoneCardRow, RowDisplayType } from "../types";
+import { SmartphoneCardConfig, SmartphoneCardRow } from "../types";
 
-const ROW_TYPES: { value: RowDisplayType; label: string }[] = [
-  { value: "text", label: "Text" },
-  { value: "bar", label: "Bar (percentage)" },
-  { value: "icon", label: "Icon only" },
-];
+const MODE_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    options: [
+      { value: "list", label: "List" },
+      { value: "phone", label: "Phone" },
+    ],
+  },
+} as const;
+
+const ROW_TYPE_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    options: [
+      { value: "text", label: "Text" },
+      { value: "bar", label: "Bar (percentage)" },
+      { value: "icon", label: "Icon only" },
+    ],
+  },
+} as const;
+
+const ENTITY_SELECTOR = { entity: {} } as const;
+const ICON_SELECTOR = { icon: {} } as const;
+const TEXT_SELECTOR = { text: {} } as const;
+const NUMBER_SELECTOR = { number: { mode: "box" } } as const;
+const DEVICE_SELECTOR = { device: {} } as const;
+
+interface EntityRegistryEntry {
+  entity_id: string;
+  device_id?: string | null;
+  hidden?: boolean;
+  disabled_by?: string | null;
+}
 
 @customElement(EDITOR_TYPE)
 export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @state() private _config!: SmartphoneCardConfig;
+
+  @state() private _deviceToAdd?: string;
 
   @query(".rows") private _rowsEl?: HTMLElement;
 
@@ -72,6 +102,27 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
     this._updateConfig({ rows });
   }
 
+  private _addRowsFromDevice() {
+    const deviceId = this._deviceToAdd;
+    if (!deviceId) return;
+    const registry = ((this.hass as any).entities ?? {}) as Record<string, EntityRegistryEntry>;
+    const existing = new Set(this._config.rows.map((row) => row.entity));
+    const newRows: SmartphoneCardRow[] = Object.values(registry)
+      .filter(
+        (entry) =>
+          entry.device_id === deviceId &&
+          !entry.hidden &&
+          !entry.disabled_by &&
+          !existing.has(entry.entity_id)
+      )
+      .map((entry) => ({ entity: entry.entity_id }));
+
+    if (newRows.length) {
+      this._updateConfig({ rows: [...this._config.rows, ...newRows] });
+    }
+    this._deviceToAdd = undefined;
+  }
+
   protected render(): TemplateResult {
     if (!this.hass || !this._config) return html``;
     const mode = this._config.mode ?? "list";
@@ -80,28 +131,39 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
     return html`
       <div class="form">
         <div class="section">
-          <ha-select
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${MODE_SELECTOR}
             label="Mode"
             .value=${mode}
-            @selected=${(e: CustomEvent) => this._updateConfig({ mode: (e.target as any).value })}
-            @closed=${(e: Event) => e.stopPropagation()}
-          >
-            <mwc-list-item value="list">List</mwc-list-item>
-            <mwc-list-item value="phone">Phone</mwc-list-item>
-          </ha-select>
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateConfig({ mode: e.detail.value });
+            }}
+          ></ha-selector>
 
-          <ha-textfield
+          <ha-selector
+            .hass=${this.hass}
+            .selector=${TEXT_SELECTOR}
             label="Device name"
             .value=${this._config.device_name ?? ""}
-            @input=${(e: InputEvent) => this._updateConfig({ device_name: (e.target as HTMLInputElement).value })}
-          ></ha-textfield>
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateConfig({ device_name: e.detail.value });
+            }}
+          ></ha-selector>
 
           ${mode === "list"
-            ? html`<ha-textfield
+            ? html`<ha-selector
+                .hass=${this.hass}
+                .selector=${TEXT_SELECTOR}
                 label="Card title (optional)"
                 .value=${this._config.title ?? ""}
-                @input=${(e: InputEvent) => this._updateConfig({ title: (e.target as HTMLInputElement).value })}
-              ></ha-textfield>`
+                @value-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this._updateConfig({ title: e.detail.value });
+                }}
+              ></ha-selector>`
             : nothing}
         </div>
 
@@ -109,37 +171,68 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
           ? html`
               <div class="section">
                 <div class="section-title">Status bar</div>
-                <ha-entity-picker
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${ENTITY_SELECTOR}
                   label="Battery (%)"
-                  .hass=${this.hass}
                   .value=${sb.battery_entity ?? ""}
-                  @value-changed=${(e: CustomEvent) =>
-                    this._updateConfig({ status_bar: { ...sb, battery_entity: e.detail.value } })}
-                ></ha-entity-picker>
-                <ha-entity-picker
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateConfig({ status_bar: { ...sb, battery_entity: e.detail.value } });
+                  }}
+                ></ha-selector>
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${ENTITY_SELECTOR}
                   label="Charging (binary_sensor)"
-                  .hass=${this.hass}
                   .value=${sb.charging_entity ?? ""}
-                  @value-changed=${(e: CustomEvent) =>
-                    this._updateConfig({ status_bar: { ...sb, charging_entity: e.detail.value } })}
-                ></ha-entity-picker>
-                <ha-entity-picker
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateConfig({ status_bar: { ...sb, charging_entity: e.detail.value } });
+                  }}
+                ></ha-selector>
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${ENTITY_SELECTOR}
                   label="Wi-Fi connection"
-                  .hass=${this.hass}
                   .value=${sb.wifi_entity ?? ""}
-                  @value-changed=${(e: CustomEvent) =>
-                    this._updateConfig({ status_bar: { ...sb, wifi_entity: e.detail.value } })}
-                ></ha-entity-picker>
-                <ha-entity-picker
-                  label="Mobile data"
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateConfig({ status_bar: { ...sb, wifi_entity: e.detail.value } });
+                  }}
+                ></ha-selector>
+                <ha-selector
                   .hass=${this.hass}
+                  .selector=${ENTITY_SELECTOR}
+                  label="Mobile data"
                   .value=${sb.mobile_data_entity ?? ""}
-                  @value-changed=${(e: CustomEvent) =>
-                    this._updateConfig({ status_bar: { ...sb, mobile_data_entity: e.detail.value } })}
-                ></ha-entity-picker>
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateConfig({ status_bar: { ...sb, mobile_data_entity: e.detail.value } });
+                  }}
+                ></ha-selector>
               </div>
             `
           : nothing}
+
+        <div class="section">
+          <div class="section-title">Add entities from a device</div>
+          <div class="device-add">
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${DEVICE_SELECTOR}
+              label="Device"
+              .value=${this._deviceToAdd ?? ""}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._deviceToAdd = e.detail.value;
+              }}
+            ></ha-selector>
+            <mwc-button .disabled=${!this._deviceToAdd} @click=${this._addRowsFromDevice}>
+              + Add all entities
+            </mwc-button>
+          </div>
+        </div>
 
         <div class="section">
           <div class="section-title">
@@ -159,47 +252,70 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       <div class="row-editor">
         <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
         <div class="row-editor-fields">
-          <ha-entity-picker
-            label="Entity"
+          <ha-selector
             .hass=${this.hass}
+            .selector=${ENTITY_SELECTOR}
+            label="Entity"
             .value=${row.entity}
-            @value-changed=${(e: CustomEvent) => this._updateRow(index, { entity: e.detail.value })}
-          ></ha-entity-picker>
+            @value-changed=${(e: CustomEvent) => {
+              e.stopPropagation();
+              this._updateRow(index, { entity: e.detail.value });
+            }}
+          ></ha-selector>
           <div class="row-editor-line">
-            <ha-textfield
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${TEXT_SELECTOR}
               label="Name (optional)"
               .value=${row.name ?? ""}
-              @input=${(e: InputEvent) => this._updateRow(index, { name: (e.target as HTMLInputElement).value })}
-            ></ha-textfield>
-            <ha-icon-picker
-              label="Icon"
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateRow(index, { name: e.detail.value });
+              }}
+            ></ha-selector>
+            <ha-selector
               .hass=${this.hass}
+              .selector=${ICON_SELECTOR}
+              label="Icon"
               .value=${row.icon ?? ""}
-              @value-changed=${(e: CustomEvent) => this._updateRow(index, { icon: e.detail.value })}
-            ></ha-icon-picker>
-            <ha-select
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateRow(index, { icon: e.detail.value });
+              }}
+            ></ha-selector>
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${ROW_TYPE_SELECTOR}
               label="Display"
               .value=${row.type ?? "text"}
-              @selected=${(e: CustomEvent) => this._updateRow(index, { type: (e.target as any).value })}
-              @closed=${(e: Event) => e.stopPropagation()}
-            >
-              ${ROW_TYPES.map((t) => html`<mwc-list-item .value=${t.value}>${t.label}</mwc-list-item>`)}
-            </ha-select>
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._updateRow(index, { type: e.detail.value });
+              }}
+            ></ha-selector>
           </div>
           ${row.type === "bar"
             ? html`<div class="row-editor-line">
-                <ha-textfield
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${NUMBER_SELECTOR}
                   label="Min"
-                  type="number"
-                  .value=${String(row.min ?? 0)}
-                  @input=${(e: InputEvent) => this._updateRow(index, { min: Number((e.target as HTMLInputElement).value) })}
-                ></ha-textfield>
-                <ha-textfield
+                  .value=${row.min ?? 0}
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateRow(index, { min: Number(e.detail.value) });
+                  }}
+                ></ha-selector>
+                <ha-selector
+                  .hass=${this.hass}
+                  .selector=${NUMBER_SELECTOR}
                   label="Max"
-                  type="number"
-                  .value=${String(row.max ?? 100)}
-                  @input=${(e: InputEvent) => this._updateRow(index, { max: Number((e.target as HTMLInputElement).value) })}
-                ></ha-textfield>
+                  .value=${row.max ?? 100}
+                  @value-changed=${(e: CustomEvent) => {
+                    e.stopPropagation();
+                    this._updateRow(index, { max: Number(e.detail.value) });
+                  }}
+                ></ha-selector>
               </div>`
             : nothing}
         </div>
@@ -226,6 +342,14 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       .section-title {
         font-weight: 500;
         color: var(--primary-text-color);
+      }
+      .device-add {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .device-add ha-selector {
+        flex: 1;
       }
       .rows {
         display: flex;
@@ -264,10 +388,8 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       .remove {
         color: var(--secondary-text-color);
       }
-      ha-select,
-      ha-textfield,
-      ha-entity-picker,
-      ha-icon-picker {
+      ha-selector {
+        display: block;
         width: 100%;
       }
     `;
