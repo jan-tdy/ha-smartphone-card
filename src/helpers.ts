@@ -209,6 +209,33 @@ export interface HistoryPoint {
   last_changed: string;
 }
 
+// A curated shortlist of common Android package names, searchable in a
+// dropdown; shared between the editor's quick-action config and the card's
+// own runtime app picker (opened when a "Launch app" quick action has no
+// package_name preconfigured).
+export const COMMON_ANDROID_APPS: { value: string; label: string }[] = [
+  { value: "com.whatsapp", label: "WhatsApp" },
+  { value: "com.android.chrome", label: "Chrome" },
+  { value: "com.google.android.gm", label: "Gmail" },
+  { value: "com.google.android.apps.maps", label: "Google Maps" },
+  { value: "com.google.android.youtube", label: "YouTube" },
+  { value: "com.spotify.music", label: "Spotify" },
+  { value: "com.instagram.android", label: "Instagram" },
+  { value: "com.facebook.katana", label: "Facebook" },
+  { value: "com.facebook.orca", label: "Messenger" },
+  { value: "org.telegram.messenger", label: "Telegram" },
+  { value: "org.thoughtcrime.securesms", label: "Signal" },
+  { value: "com.twitter.android", label: "X (Twitter)" },
+  { value: "com.android.camera2", label: "Camera" },
+  { value: "com.android.dialer", label: "Phone" },
+  { value: "com.android.vending", label: "Play Store" },
+  { value: "io.homeassistant.companion.android", label: "Home Assistant" },
+  { value: "com.netflix.mediaclient", label: "Netflix" },
+  { value: "com.google.android.apps.photos", label: "Google Photos" },
+  { value: "com.google.android.calendar", label: "Google Calendar" },
+  { value: "com.google.android.deskclock", label: "Clock" },
+];
+
 export function isMostlyNumeric(points: HistoryPoint[]): boolean {
   if (!points.length) return false;
   const numeric = points.filter((p) => p.state !== "" && !Number.isNaN(Number(p.state)));

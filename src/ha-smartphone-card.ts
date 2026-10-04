@@ -4,6 +4,7 @@ import { HomeAssistant, LovelaceCard, LovelaceCardEditor, computeDomain, toggleE
 import { CARD_TYPE, EDITOR_TYPE } from "./const";
 import { SmartphoneCardConfig, SmartphoneCardQuickAction, SmartphoneCardRow } from "./types";
 import {
+  COMMON_ANDROID_APPS,
   getBarColor,
   getCellularIcon,
   getRowDisplayType,
@@ -42,6 +43,14 @@ const COMPOSE_PRIORITY_SELECTOR = {
   },
 } as const;
 
+const APP_PICKER_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    custom_value: true,
+    options: COMMON_ANDROID_APPS,
+  },
+} as const;
+
 @customElement(CARD_TYPE)
 export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -65,6 +74,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _composePriority = "normal";
 
   @state() private _composeChannel = "";
+
+  @state() private _appPickerTarget?: { service: string; name?: string };
+
+  @state() private _appPickerValue = "";
 
   private _clockInterval?: ReturnType<typeof setInterval>;
 
@@ -185,14 +198,12 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       return;
     }
     if (action.type === "app") {
-      const [domain, service] = (action.service ?? "").split(".");
-      if (domain && service && action.package_name) {
-        this.hass.callService(domain, service, {
-          message: "command_launch_app",
-          data: { package_name: action.package_name },
-        });
+      if (action.package_name) {
+        this._launchApp(action.service, action.package_name);
+        this._closeQuickActions();
+      } else {
+        this._openAppPicker(action);
       }
-      this._closeQuickActions();
       return;
     }
     const [domain, service] = (action.service ?? "").split(".");
@@ -271,6 +282,33 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     }
 
     this._closeCompose();
+  }
+
+  private _launchApp(service: string | undefined, packageName: string) {
+    const [domain, serviceName] = (service ?? "").split(".");
+    if (!domain || !serviceName || !packageName) return;
+    this.hass.callService(domain, serviceName, {
+      message: "command_launch_app",
+      data: { package_name: packageName },
+    });
+  }
+
+  private _openAppPicker(action: SmartphoneCardQuickAction) {
+    if (!action.service) return;
+    this._appPickerTarget = { service: action.service, name: action.name };
+    this._appPickerValue = "";
+    this._quickActionsOpen = false;
+  }
+
+  private _closeAppPicker() {
+    this._appPickerTarget = undefined;
+  }
+
+  private _submitAppPicker() {
+    const target = this._appPickerTarget;
+    if (!target || !this._appPickerValue.trim()) return;
+    this._launchApp(target.service, this._appPickerValue.trim());
+    this._closeAppPicker();
   }
 
   private _renderRow(row: SmartphoneCardRow, onTap: (entityId: string) => void): TemplateResult {
@@ -467,6 +505,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               ${this._sheetEntityId ? this._renderSheet(this._sheetEntityId) : nothing}
               ${this._quickActionsOpen ? this._renderQuickActionsSheet() : nothing}
               ${this._composeTarget ? this._renderComposeSheet() : nothing}
+              ${this._appPickerTarget ? this._renderAppPickerSheet() : nothing}
             </div>
           </div>
         </div>
@@ -562,6 +601,41 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               @click=${() => this._submitCompose()}
             >
               Send
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderAppPickerSheet(): TemplateResult {
+    const target = this._appPickerTarget;
+    if (!target) return html``;
+    return html`
+      <div class="sheet-backdrop" @click=${() => this._closeAppPicker()}>
+        <div class="sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">${target.name ?? "Launch app"}</div>
+          <div class="compose-form">
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${APP_PICKER_SELECTOR}
+              label="App to launch"
+              .value=${this._appPickerValue}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._appPickerValue = e.detail.value;
+              }}
+            ></ha-selector>
+          </div>
+          <div class="sheet-actions">
+            <button class="sheet-btn" @click=${() => this._closeAppPicker()}>Cancel</button>
+            <button
+              class="sheet-btn primary"
+              ?disabled=${!this._appPickerValue.trim()}
+              @click=${() => this._submitAppPicker()}
+            >
+              Launch
             </button>
           </div>
         </div>
