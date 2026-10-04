@@ -7,8 +7,8 @@ import { SmartphoneCardConfig, SmartphoneCardRow, RowDisplayType } from "../type
 
 const ROW_TYPES: { value: RowDisplayType; label: string }[] = [
   { value: "text", label: "Text" },
-  { value: "bar", label: "Bar (percentá)" },
-  { value: "icon", label: "Len ikona" },
+  { value: "bar", label: "Bar (percentage)" },
+  { value: "icon", label: "Icon only" },
 ];
 
 @customElement(EDITOR_TYPE)
@@ -81,24 +81,24 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       <div class="form">
         <div class="section">
           <ha-select
-            label="Režim"
+            label="Mode"
             .value=${mode}
             @selected=${(e: CustomEvent) => this._updateConfig({ mode: (e.target as any).value })}
             @closed=${(e: Event) => e.stopPropagation()}
           >
-            <mwc-list-item value="list">Zoznam (list)</mwc-list-item>
-            <mwc-list-item value="phone">Telefón (phone)</mwc-list-item>
+            <mwc-list-item value="list">List</mwc-list-item>
+            <mwc-list-item value="phone">Phone</mwc-list-item>
           </ha-select>
 
           <ha-textfield
-            label="Názov zariadenia"
+            label="Device name"
             .value=${this._config.device_name ?? ""}
             @input=${(e: InputEvent) => this._updateConfig({ device_name: (e.target as HTMLInputElement).value })}
           ></ha-textfield>
 
           ${mode === "list"
             ? html`<ha-textfield
-                label="Nadpis karty (voliteľné)"
+                label="Card title (optional)"
                 .value=${this._config.title ?? ""}
                 @input=${(e: InputEvent) => this._updateConfig({ title: (e.target as HTMLInputElement).value })}
               ></ha-textfield>`
@@ -110,28 +110,28 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               <div class="section">
                 <div class="section-title">Status bar</div>
                 <ha-entity-picker
-                  label="Batéria (%)"
+                  label="Battery (%)"
                   .hass=${this.hass}
                   .value=${sb.battery_entity ?? ""}
                   @value-changed=${(e: CustomEvent) =>
                     this._updateConfig({ status_bar: { ...sb, battery_entity: e.detail.value } })}
                 ></ha-entity-picker>
                 <ha-entity-picker
-                  label="Nabíjanie (binary_sensor)"
+                  label="Charging (binary_sensor)"
                   .hass=${this.hass}
                   .value=${sb.charging_entity ?? ""}
                   @value-changed=${(e: CustomEvent) =>
                     this._updateConfig({ status_bar: { ...sb, charging_entity: e.detail.value } })}
                 ></ha-entity-picker>
                 <ha-entity-picker
-                  label="Wi-Fi pripojenie"
+                  label="Wi-Fi connection"
                   .hass=${this.hass}
                   .value=${sb.wifi_entity ?? ""}
                   @value-changed=${(e: CustomEvent) =>
                     this._updateConfig({ status_bar: { ...sb, wifi_entity: e.detail.value } })}
                 ></ha-entity-picker>
                 <ha-entity-picker
-                  label="Mobilné dáta"
+                  label="Mobile data"
                   .hass=${this.hass}
                   .value=${sb.mobile_data_entity ?? ""}
                   @value-changed=${(e: CustomEvent) =>
@@ -143,12 +143,12 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
 
         <div class="section">
           <div class="section-title">
-            ${mode === "phone" ? "Položky na displeji" : "Riadky"}
+            ${mode === "phone" ? "Screen items" : "Rows"}
           </div>
           <div class="rows">
             ${this._config.rows.map((row, index) => this._renderRowEditor(row, index))}
           </div>
-          <mwc-button @click=${this._addRow}>+ Pridať entitu</mwc-button>
+          <mwc-button @click=${this._addRow}>+ Add entity</mwc-button>
         </div>
       </div>
     `;
@@ -160,25 +160,25 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
         <ha-icon class="drag-handle" icon="mdi:drag"></ha-icon>
         <div class="row-editor-fields">
           <ha-entity-picker
-            label="Entita"
+            label="Entity"
             .hass=${this.hass}
             .value=${row.entity}
             @value-changed=${(e: CustomEvent) => this._updateRow(index, { entity: e.detail.value })}
           ></ha-entity-picker>
           <div class="row-editor-line">
             <ha-textfield
-              label="Názov (voliteľné)"
+              label="Name (optional)"
               .value=${row.name ?? ""}
               @input=${(e: InputEvent) => this._updateRow(index, { name: (e.target as HTMLInputElement).value })}
             ></ha-textfield>
             <ha-icon-picker
-              label="Ikona"
+              label="Icon"
               .hass=${this.hass}
               .value=${row.icon ?? ""}
               @value-changed=${(e: CustomEvent) => this._updateRow(index, { icon: e.detail.value })}
             ></ha-icon-picker>
             <ha-select
-              label="Zobrazenie"
+              label="Display"
               .value=${row.type ?? "text"}
               @selected=${(e: CustomEvent) => this._updateRow(index, { type: (e.target as any).value })}
               @closed=${(e: Event) => e.stopPropagation()}

@@ -100,7 +100,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
         <div class="card-content list-mode">
           ${this._config.rows.length
             ? this._config.rows.map((row) => this._renderRow(row))
-            : html`<div class="empty">Pridaj entity v nastaveniach karty.</div>`}
+            : html`<div class="empty">Add entities in the card settings.</div>`}
         </div>
       </ha-card>
     `;
@@ -152,7 +152,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             <div class="screen">
               ${this._config.rows.length
                 ? this._config.rows.map((row) => this._renderRow(row))
-                : html`<div class="empty">Pridaj entity v nastaveniach karty.</div>`}
+                : html`<div class="empty">Add entities in the card settings.</div>`}
             </div>
             <div class="home-indicator"></div>
           </div>
@@ -346,6 +346,6 @@ declare global {
 (window as any).customCards.push({
   type: CARD_TYPE,
   name: "Smartphone Card",
-  description: "Zobrazenie senzorov HA companion app telefónu – zoznam alebo phone-like náhľad.",
+  description: "Display Home Assistant companion app sensors as a list or a phone-like preview.",
   preview: true,
 });

@@ -1,32 +1,32 @@
 # ha-smartphone-card
 
-Lovelace karta pre Home Assistant na zobrazenie senzorov z Companion App (batéria, poloha, jas, kroky, Wi-Fi, posledná appka...).
+A Lovelace card for Home Assistant that displays sensors from the Companion App (battery, location, light sensor, steps, Wi-Fi, last used app...).
 
-Nainštalovateľná cez HACS (custom repository), plne nastaviteľná cez vizuálny editor (bez nutnosti písať YAML), v oficiálnom vzhľade Home Assistant.
+Installable via HACS (custom repository), fully configurable through a visual editor (no YAML required), in the official Home Assistant look and feel.
 
-## Režimy
+## Modes
 
-- **list** – zoznam riadkov v štýle oficiálnej `entities` karty. Percentuálne/battery hodnoty je možné zobraziť aj ako progress bar.
-- **phone** – karta vyzerá ako telefón (zaoblený rám, notch, status bar s hodinami, Wi-Fi/dátami a batériou), s "displejom" obsahujúcim ostatné zvolené entity (poloha, jas, posledná appka, kroky...).
+- **list** – rows styled like the official `entities` card. Percentage/battery values can also be rendered as a progress bar.
+- **phone** – the card looks like a phone (rounded frame, notch, status bar with clock, Wi-Fi/mobile data and battery), with a "screen" showing the other selected entities (location, brightness, last used app, steps...).
 
-## Inštalácia
+## Installation
 
 ### HACS
 
-1. HACS → Frontend → ⋮ → Custom repositories → pridaj URL tohto repozitára, kategória „Lovelace".
-2. Nainštaluj „Smartphone Card".
-3. Reload prehliadača.
+1. HACS → Frontend → ⋮ → Custom repositories → add this repository's URL, category "Lovelace".
+2. Install "Smartphone Card".
+3. Reload your browser.
 
-### Manuálne
+### Manual
 
-1. Skopíruj `dist/ha-smartphone-card.js` do `config/www/`.
-2. V Nastavenia → Dashboardy → Resources pridaj `/local/ha-smartphone-card.js` ako JavaScript Module.
+1. Copy `dist/ha-smartphone-card.js` to `config/www/`.
+2. Under Settings → Dashboards → Resources, add `/local/ha-smartphone-card.js` as a JavaScript Module.
 
-## Konfigurácia
+## Configuration
 
-Odporúčaný spôsob je cez vizuálny editor karty (Pridať kartu → Smartphone Card). Nižšie je príklad YAML.
+The recommended way is through the card's visual editor (Add Card → Smartphone Card). Below is an example YAML.
 
-### Zoznam (list)
+### List
 
 ```yaml
 type: custom:ha-smartphone-card
@@ -45,7 +45,7 @@ rows:
   - entity: sensor.sm_a346b_wifi_connection
 ```
 
-### Telefón (phone)
+### Phone
 
 ```yaml
 type: custom:ha-smartphone-card
@@ -58,7 +58,7 @@ status_bar:
 rows:
   - entity: device_tracker.sm_a346b
     icon: mdi:map-marker
-    name: Poloha
+    name: Location
   - entity: sensor.sm_a346b_light_sensor
     type: bar
     max: 1000
@@ -66,12 +66,12 @@ rows:
   - entity: sensor.sm_a346b_steps_sensor
 ```
 
-## Možnosti riadku (`rows`)
+## Row options (`rows`)
 
-| Kľúč | Popis |
+| Key | Description |
 |---|---|
-| `entity` | entity ID (povinné) |
-| `name` | vlastný názov, inak `friendly_name` |
-| `icon` | vlastná ikona, inak ikona entity |
-| `type` | `text` \| `bar` \| `icon`; pri číselných % senzoroch sa `bar` zvolí automaticky |
-| `min`, `max` | rozsah pre výpočet percenta v `bar` type (default 0–100) |
+| `entity` | entity ID (required) |
+| `name` | custom name, otherwise the entity's `friendly_name` |
+| `icon` | custom icon, otherwise the entity's icon |
+| `type` | `text` \| `bar` \| `icon`; numeric `%` sensors automatically default to `bar` |
+| `min`, `max` | range used to compute the percentage for `bar` type (default 0–100) |
