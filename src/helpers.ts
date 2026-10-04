@@ -5,10 +5,43 @@ export function getRowState(hass: HomeAssistant, row: SmartphoneCardRow) {
   return hass.states[row.entity];
 }
 
+export interface EntityRegistryEntry {
+  entity_id: string;
+  device_id?: string | null;
+  name?: string | null;
+  original_name?: string | null;
+  hidden_by?: string | null;
+  disabled_by?: string | null;
+}
+
+interface DeviceRegistryEntry {
+  name?: string | null;
+  name_by_user?: string | null;
+}
+
 export function getRowName(hass: HomeAssistant, row: SmartphoneCardRow): string {
   if (row.name) return row.name;
+
   const stateObj = getRowState(hass, row);
-  return stateObj?.attributes?.friendly_name ?? row.entity;
+  const friendlyName = stateObj?.attributes?.friendly_name ?? row.entity;
+
+  const entityEntry = ((hass as any).entities as Record<string, EntityRegistryEntry> | undefined)?.[row.entity];
+  if (entityEntry?.name) return entityEntry.name;
+  if (entityEntry?.original_name) return entityEntry.original_name;
+
+  // Entity has no per-entity name in the registry: fall back to stripping the
+  // device name HA prepends to friendly_name (e.g. "SM-A346B Battery level").
+  const deviceId = entityEntry?.device_id;
+  const device = deviceId
+    ? ((hass as any).devices as Record<string, DeviceRegistryEntry> | undefined)?.[deviceId]
+    : undefined;
+  const deviceName = device?.name_by_user ?? device?.name;
+  if (deviceName && friendlyName.startsWith(deviceName)) {
+    const stripped = friendlyName.slice(deviceName.length).trim();
+    if (stripped) return stripped;
+  }
+
+  return friendlyName;
 }
 
 export function getRowIcon(hass: HomeAssistant, row: SmartphoneCardRow): string | undefined {

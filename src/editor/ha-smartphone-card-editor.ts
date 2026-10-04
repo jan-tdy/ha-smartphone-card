@@ -4,6 +4,7 @@ import { HomeAssistant, LovelaceCardEditor, fireEvent } from "custom-card-helper
 import Sortable from "sortablejs";
 import { EDITOR_TYPE } from "../const";
 import { SmartphoneCardConfig, SmartphoneCardRow } from "../types";
+import { EntityRegistryEntry } from "../helpers";
 
 const MODE_SELECTOR = {
   select: {
@@ -31,13 +32,6 @@ const ICON_SELECTOR = { icon: {} } as const;
 const TEXT_SELECTOR = { text: {} } as const;
 const NUMBER_SELECTOR = { number: { mode: "box" } } as const;
 const DEVICE_SELECTOR = { device: {} } as const;
-
-interface EntityRegistryEntry {
-  entity_id: string;
-  device_id?: string | null;
-  hidden?: boolean;
-  disabled_by?: string | null;
-}
 
 @customElement(EDITOR_TYPE)
 export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEditor {
@@ -111,7 +105,7 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
       .filter(
         (entry) =>
           entry.device_id === deviceId &&
-          !entry.hidden &&
+          !entry.hidden_by &&
           !entry.disabled_by &&
           !existing.has(entry.entity_id)
       )
