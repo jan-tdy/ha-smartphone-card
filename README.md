@@ -1,5 +1,7 @@
 # ha-smartphone-card
 
+If you found this useful, please consider giving this repo a star!
+
 A Lovelace card for Home Assistant that displays sensors from the Companion App (battery, location, light sensor, steps, Wi-Fi, last used app...).
 
 Installable via HACS (custom repository), fully configurable through a visual editor (no YAML required), in the official Home Assistant look and feel.
