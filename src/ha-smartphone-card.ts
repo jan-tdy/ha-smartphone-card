@@ -506,10 +506,14 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
                 `}
           </div>
           <div class="sheet-actions">
-            <mwc-button @click=${() => this._closeCompose()}>Cancel</mwc-button>
-            <mwc-button .disabled=${!this._composeMessage.trim()} @click=${() => this._submitCompose()}>
+            <button class="sheet-btn" @click=${() => this._closeCompose()}>Cancel</button>
+            <button
+              class="sheet-btn primary"
+              ?disabled=${!this._composeMessage.trim()}
+              @click=${() => this._submitCompose()}
+            >
               Send
-            </mwc-button>
+            </button>
           </div>
         </div>
       </div>
@@ -540,16 +544,17 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
           ${this._renderHistory(unit)}
           <div class="sheet-actions">
             ${toggleable
-              ? html`<mwc-button @click=${() => this._toggleSheetEntity()}>Toggle</mwc-button>`
+              ? html`<button class="sheet-btn primary" @click=${() => this._toggleSheetEntity()}>Toggle</button>`
               : nothing}
-            <mwc-button
+            <button
+              class="sheet-btn"
               @click=${() => {
                 this._showMoreInfo(entityId);
                 this._closeSheet();
               }}
             >
               More details
-            </mwc-button>
+            </button>
           </div>
         </div>
       </div>
@@ -906,8 +911,31 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       .sheet-actions {
         display: flex;
         justify-content: flex-end;
-        gap: 4px;
+        gap: 8px;
         margin-top: 14px;
+      }
+      .sheet-btn {
+        border: none;
+        background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+        color: var(--primary-color);
+        font: inherit;
+        font-weight: 500;
+        font-size: 13px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .sheet-btn:hover {
+        filter: brightness(0.96);
+      }
+      .sheet-btn.primary {
+        background: var(--primary-color);
+        color: var(--text-primary-color, #fff);
+      }
+      .sheet-btn:disabled {
+        background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+        color: var(--disabled-text-color, #9e9e9e);
+        cursor: default;
       }
       .sheet-title {
         color: var(--primary-text-color);
