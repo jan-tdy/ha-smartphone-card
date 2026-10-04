@@ -1,0 +1,32 @@
+{
+  "name": "ha-smartphone-card",
+  "version": "0.1.0",
+  "description": "A Home Assistant Lovelace card for smartphone companion-app sensors, with a list view and a phone-like view.",
+  "main": "dist/ha-smartphone-card.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch",
+    "lint": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jan-tdy/ha-smartphone-card.git"
+  },
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^2.8.0",
+    "sortablejs": "^1.15.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/sortablejs": "^1.15.8",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  }
+}
