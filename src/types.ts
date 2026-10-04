@@ -1,6 +1,6 @@
 import { LovelaceCardConfig } from "custom-card-helpers";
 
-export type RowDisplayType = "text" | "bar" | "icon";
+export type RowDisplayType = "text" | "bar" | "icon" | "message";
 
 export interface SmartphoneCardRow {
   entity: string;
@@ -24,7 +24,14 @@ export interface SmartphoneCardStatusBar {
 
 export type SmartphoneCardMode = "list" | "phone";
 
+export type SmartphoneCardQuickActionType = "service" | "message";
+
 export interface SmartphoneCardQuickAction {
+  /** "service" (default): call `service` immediately with `entity_id`/`data`.
+   * "message": `service` is a notify target (a notify entity_id, or a legacy
+   * notify.* service name) and tapping opens a compose sheet (title/message/
+   * priority/channel) instead of calling anything right away. */
+  type?: SmartphoneCardQuickActionType;
   service: string;
   entity_id?: string;
   data?: Record<string, unknown>;

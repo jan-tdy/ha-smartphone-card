@@ -30,6 +30,18 @@ interface LayoutOptions {
   grid_min_rows?: number;
 }
 
+const COMPOSE_TEXT_SELECTOR = { text: {} } as const;
+const COMPOSE_MESSAGE_SELECTOR = { text: { multiline: true } } as const;
+const COMPOSE_PRIORITY_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    options: [
+      { value: "normal", label: "Normal" },
+      { value: "high", label: "High" },
+    ],
+  },
+} as const;
+
 @customElement(CARD_TYPE)
 export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -41,6 +53,16 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _quickActionsOpen = false;
 
   @state() private _historyPoints?: HistoryPoint[];
+
+  @state() private _composeTarget?: { service: string; name?: string };
+
+  @state() private _composeTitle = "";
+
+  @state() private _composeMessage = "";
+
+  @state() private _composePriority = "normal";
+
+  @state() private _composeChannel = "";
 
   private _clockInterval?: ReturnType<typeof setInterval>;
 
@@ -152,6 +174,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   }
 
   private _runQuickAction(action: SmartphoneCardQuickAction) {
+    if (action.type === "message") {
+      this._openCompose(action);
+      return;
+    }
     const [domain, service] = action.service.split(".");
     if (!domain || !service) return;
     const data: Record<string, unknown> = { ...action.data };
@@ -160,12 +186,53 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._closeQuickActions();
   }
 
+  private _openCompose(action: SmartphoneCardQuickAction) {
+    this._composeTarget = { service: action.service, name: action.name };
+    this._composeTitle = "";
+    this._composeMessage = "";
+    this._composePriority = "normal";
+    this._composeChannel = "";
+    this._quickActionsOpen = false;
+  }
+
+  private _closeCompose() {
+    this._composeTarget = undefined;
+  }
+
+  private _submitCompose() {
+    const target = this._composeTarget;
+    if (!target || !this._composeMessage.trim()) return;
+
+    const data: Record<string, unknown> = {};
+    if (this._composeChannel.trim()) data.channel = this._composeChannel.trim();
+    if (this._composePriority === "high") data.push = { priority: "high" };
+
+    const serviceData: Record<string, unknown> = { message: this._composeMessage };
+    if (this._composeTitle.trim()) serviceData.title = this._composeTitle.trim();
+    if (Object.keys(data).length) serviceData.data = data;
+
+    const isNotifyEntity = computeDomain(target.service) === "notify" && !!this.hass.states[target.service];
+    if (isNotifyEntity) {
+      this.hass.callService("notify", "send_message", serviceData, { entity_id: target.service });
+    } else {
+      const [domain, service] = target.service.split(".");
+      if (domain && service) this.hass.callService(domain, service, serviceData);
+    }
+
+    this._closeCompose();
+  }
+
   private _renderRow(row: SmartphoneCardRow, onTap: (entityId: string) => void): TemplateResult {
     const hass = this.hass;
+    const type = getRowDisplayType(hass, row);
+
+    if (type === "message") {
+      return this._renderMessageRow(row);
+    }
+
     const stateObj = getRowState(hass, row);
     const name = getRowName(hass, row);
     const icon = getRowIcon(hass, row);
-    const type = getRowDisplayType(hass, row);
     const unavailable = !stateObj;
 
     return html`
@@ -194,6 +261,35 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     `;
   }
 
+  private _renderMessageRow(row: SmartphoneCardRow): TemplateResult {
+    const name = row.name ?? "Send message";
+    const icon = row.icon ?? "mdi:message-text";
+    const openCompose = () => this._openCompose({ service: row.entity, name: row.name, icon: row.icon });
+
+    return html`
+      <div
+        class="row"
+        role="button"
+        tabindex="0"
+        @click=${openCompose}
+        @keydown=${(e: KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openCompose();
+          }
+        }}
+      >
+        <span class="row-icon-wrap">
+          <ha-icon class="row-icon" .icon=${icon}></ha-icon>
+        </span>
+        <div class="row-main">
+          <div class="row-name">${name}</div>
+          <div class="row-value">Tap to send</div>
+        </div>
+      </div>
+    `;
+  }
+
   private _renderBar(row: SmartphoneCardRow): TemplateResult {
     const percent = getRowPercent(this.hass, row);
     const value = getRowDisplayValue(this.hass, row);
@@ -214,12 +310,13 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   private _renderList(): TemplateResult {
     const title = this._config.title ?? this._config.device_name;
     return html`
-      <ha-card .header=${title ?? nothing}>
+      <ha-card .header=${title ?? nothing} class="sheet-anchor">
         <div class="card-content list-mode">
           ${this._config.rows.length
             ? this._config.rows.map((row) => this._renderRow(row, (id) => this._showMoreInfo(id)))
             : html`<div class="empty">Add entities in the card settings.</div>`}
         </div>
+        ${this._composeTarget ? this._renderComposeSheet() : nothing}
       </ha-card>
     `;
   }
@@ -318,6 +415,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               <div class="home-indicator"></div>
               ${this._sheetEntityId ? this._renderSheet(this._sheetEntityId) : nothing}
               ${this._quickActionsOpen ? this._renderQuickActionsSheet() : nothing}
+              ${this._composeTarget ? this._renderComposeSheet() : nothing}
             </div>
           </div>
         </div>
@@ -341,6 +439,69 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
                 </button>
               `
             )}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _renderComposeSheet(): TemplateResult {
+    const target = this._composeTarget;
+    if (!target) return html``;
+    return html`
+      <div class="sheet-backdrop" @click=${() => this._closeCompose()}>
+        <div class="sheet" @click=${(e: Event) => e.stopPropagation()}>
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">${target.name ?? "Send message"}</div>
+          <div class="compose-form">
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${COMPOSE_TEXT_SELECTOR}
+              label="Title (optional)"
+              .value=${this._composeTitle}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._composeTitle = e.detail.value;
+              }}
+            ></ha-selector>
+            <ha-selector
+              .hass=${this.hass}
+              .selector=${COMPOSE_MESSAGE_SELECTOR}
+              label="Message"
+              .value=${this._composeMessage}
+              @value-changed=${(e: CustomEvent) => {
+                e.stopPropagation();
+                this._composeMessage = e.detail.value;
+              }}
+            ></ha-selector>
+            <div class="row-editor-line">
+              <ha-selector
+                .hass=${this.hass}
+                .selector=${COMPOSE_PRIORITY_SELECTOR}
+                label="Priority"
+                .value=${this._composePriority}
+                @value-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this._composePriority = e.detail.value;
+                }}
+              ></ha-selector>
+              <ha-selector
+                .hass=${this.hass}
+                .selector=${COMPOSE_TEXT_SELECTOR}
+                label="Channel (optional)"
+                .value=${this._composeChannel}
+                @value-changed=${(e: CustomEvent) => {
+                  e.stopPropagation();
+                  this._composeChannel = e.detail.value;
+                }}
+              ></ha-selector>
+            </div>
+          </div>
+          <div class="sheet-actions">
+            <mwc-button @click=${() => this._closeCompose()}>Cancel</mwc-button>
+            <mwc-button .disabled=${!this._composeMessage.trim()} @click=${() => this._submitCompose()}>
+              Send
+            </mwc-button>
           </div>
         </div>
       </div>
@@ -743,6 +904,23 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
         font-size: 15px;
         font-weight: 500;
         margin-bottom: 10px;
+      }
+      .sheet-anchor {
+        position: relative;
+        overflow: hidden;
+      }
+      .compose-form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .compose-form .row-editor-line {
+        display: flex;
+        gap: 8px;
+      }
+      .compose-form .row-editor-line > * {
+        flex: 1;
+        min-width: 0;
       }
       .quick-actions-list {
         display: flex;

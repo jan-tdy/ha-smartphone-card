@@ -62,7 +62,7 @@ export function getRowUnit(hass: HomeAssistant, row: SmartphoneCardRow): string 
   return stateObj?.attributes?.unit_of_measurement ?? "";
 }
 
-export function getRowDisplayType(hass: HomeAssistant, row: SmartphoneCardRow): "text" | "bar" | "icon" {
+export function getRowDisplayType(hass: HomeAssistant, row: SmartphoneCardRow): "text" | "bar" | "icon" | "message" {
   if (row.type) return row.type;
   const stateObj = getRowState(hass, row);
   if (!stateObj) return "text";
