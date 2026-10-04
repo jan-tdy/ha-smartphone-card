@@ -840,17 +840,26 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const endTileX = Math.floor((originX + W) / tileSize);
     const endTileY = Math.floor((originY + H) / tileSize);
 
+    // tile.openstreetmap.org's usage policy explicitly disallows embedding
+    // it in distributed apps/software (only ad-hoc/low-volume browser use is
+    // allowed there) and blocks requests from cards like this with a 403.
+    // CARTO's basemap CDN is free and meant for exactly this kind of use.
+    const CARTO_SUBDOMAINS = ["a", "b", "c", "d"];
     const tiles: SVGTemplateResult[] = [];
     for (let ty = startTileY; ty <= endTileY; ty++) {
       for (let tx = startTileX; tx <= endTileX; tx++) {
         const wrappedX = ((tx % tileCount) + tileCount) % tileCount;
+        const subdomain = CARTO_SUBDOMAINS[(wrappedX + ty) % CARTO_SUBDOMAINS.length];
         tiles.push(svg`
           <image
-            href="https://tile.openstreetmap.org/${zoom}/${wrappedX}/${ty}.png"
+            href="https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${wrappedX}/${ty}.png"
             x=${tx * tileSize - originX}
             y=${ty * tileSize - originY}
             width=${tileSize}
             height=${tileSize}
+            @error=${(e: Event) => {
+              (e.target as SVGImageElement).style.display = "none";
+            }}
           />
         `);
       }
@@ -890,7 +899,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             <circle cx=${W / 2} cy=${H / 2} r="7" fill="var(--primary-color)" stroke="white" stroke-width="2" />
           </g>
         </svg>
-        <div class="location-map-attribution">© OpenStreetMap contributors</div>
+        <div class="location-map-attribution">© OpenStreetMap contributors © CARTO</div>
         ${recent.length
           ? html`
               <div class="location-timeline">

@@ -690,38 +690,39 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
             </div>
           `)}
       </div>
-    `}_renderLocationMap(t){var e,i,o;const n=this.hass.states[t],a=Number(null===(e=null==n?void 0:n.attributes)||void 0===e?void 0:e.latitude),r=Number(null===(i=null==n?void 0:n.attributes)||void 0===i?void 0:i.longitude);if(Number.isNaN(a)||Number.isNaN(r))return L`<div class="sheet-history-loading">No location data.</div>`;const s=280,l=160,c=256,d=Mt(a,r,15),h=d.x-140,u=d.y-80,p=Math.pow(2,15),v=Math.floor(h/c),f=Math.floor(u/c),g=Math.floor((h+s)/c),m=Math.floor((u+l)/c),_=[];for(let t=f;t<=m;t++)for(let e=v;e<=g;e++){const i=(e%p+p)%p;_.push(z`
+    `}_renderLocationMap(t){var e,i,o;const n=this.hass.states[t],a=Number(null===(e=null==n?void 0:n.attributes)||void 0===e?void 0:e.latitude),r=Number(null===(i=null==n?void 0:n.attributes)||void 0===i?void 0:i.longitude);if(Number.isNaN(a)||Number.isNaN(r))return L`<div class="sheet-history-loading">No location data.</div>`;const s=280,l=160,c=256,d=Mt(a,r,15),h=d.x-140,u=d.y-80,p=Math.pow(2,15),v=Math.floor(h/c),f=Math.floor(u/c),g=Math.floor((h+s)/c),m=Math.floor((u+l)/c),_=["a","b","c","d"],b=[];for(let t=f;t<=m;t++)for(let e=v;e<=g;e++){const i=(e%p+p)%p,o=_[(i+t)%_.length];b.push(z`
           <image
-            href="https://tile.openstreetmap.org/${15}/${i}/${t}.png"
+            href="https://${o}.basemaps.cartocdn.com/light_all/${15}/${i}/${t}.png"
             x=${e*c-h}
             y=${t*c-u}
             width=${c}
             height=${c}
+            @error=${t=>{t.target.style.display="none"}}
           />
-        `)}const b=null!==(o=this._locationHistory)&&void 0!==o?o:[],y=b.map(t=>((t,e)=>{const i=Mt(t,e,15);return{x:i.x-h,y:i.y-u}})(t.lat,t.lon)),$=y.map(t=>`${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(" "),w=[...b].reverse().slice(0,6);return L`
+        `)}const y=null!==(o=this._locationHistory)&&void 0!==o?o:[],$=y.map(t=>((t,e)=>{const i=Mt(t,e,15);return{x:i.x-h,y:i.y-u}})(t.lat,t.lon)),w=$.map(t=>`${t.x.toFixed(1)},${t.y.toFixed(1)}`).join(" "),x=[...y].reverse().slice(0,6);return L`
       <div class="location-map">
         <svg class="location-map-svg" viewBox="0 0 ${s} ${l}" preserveAspectRatio="xMidYMid slice">
           <clipPath id="map-clip-${t.replace(/[^a-zA-Z0-9]/g,"")}">
             <rect x="0" y="0" width=${s} height=${l} rx="12" />
           </clipPath>
           <g clip-path="url(#map-clip-${t.replace(/[^a-zA-Z0-9]/g,"")})">
-            ${_}
-            ${y.length>1?z`<polyline
-                    points=${$}
+            ${b}
+            ${$.length>1?z`<polyline
+                    points=${w}
                     fill="none"
                     stroke="var(--primary-color)"
                     stroke-width="2"
                     stroke-opacity="0.8"
                     vector-effect="non-scaling-stroke"
                   />`:B}
-            ${y.slice(0,-1).map(t=>z`<circle cx=${t.x} cy=${t.y} r="2.5" fill="var(--primary-color)" fill-opacity="0.7" />`)}
+            ${$.slice(0,-1).map(t=>z`<circle cx=${t.x} cy=${t.y} r="2.5" fill="var(--primary-color)" fill-opacity="0.7" />`)}
             <circle cx=${140} cy=${80} r="7" fill="var(--primary-color)" stroke="white" stroke-width="2" />
           </g>
         </svg>
-        <div class="location-map-attribution">© OpenStreetMap contributors</div>
-        ${w.length?L`
+        <div class="location-map-attribution">© OpenStreetMap contributors © CARTO</div>
+        ${x.length?L`
               <div class="location-timeline">
-                ${w.map(t=>L`
+                ${x.map(t=>L`
                     <div class="location-timeline-row">
                       <span>${Ot(t.state)}</span>
                       <span>${this._formatHistoryTime(t.last_changed)}</span>
