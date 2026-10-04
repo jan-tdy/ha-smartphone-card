@@ -75,3 +75,13 @@ rows:
 | `icon` | custom icon, otherwise the entity's icon |
 | `type` | `text` \| `bar` \| `icon`; numeric `%` sensors automatically default to `bar` |
 | `min`, `max` | range used to compute the percentage for `bar` type (default 0–100) |
+
+## Development
+
+```sh
+npm install
+npm run build   # produces dist/ha-smartphone-card.js
+npm run watch   # rebuilds on change
+```
+
+`dist/ha-smartphone-card.js` is committed to the repository — HACS and manual installs load it directly, there's no build step on install. Always run `npm run build` and commit the result together with any `src/` change; CI fails the build if `dist/` is out of date.
