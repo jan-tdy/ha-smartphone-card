@@ -97,6 +97,10 @@ export function getRowDisplayValue(hass: HomeAssistant, row: SmartphoneCardRow):
     }
   }
 
+  if (isLocationEntity(hass, row.entity)) {
+    return formatLocationState(stateObj.state);
+  }
+
   const unit = getRowUnit(hass, row);
   return unit ? `${stateObj.state} ${unit}` : stateObj.state;
 }
@@ -207,6 +211,39 @@ export function stateOf(hass: HomeAssistant, entityId?: string): string | undefi
 export interface HistoryPoint {
   state: string;
   last_changed: string;
+}
+
+const LOCATION_DOMAINS = new Set(["device_tracker", "person"]);
+
+/** True for device_tracker/person entities, or any entity whose state carries
+ * latitude/longitude attributes (e.g. some companion-app "Location" sensors). */
+export function isLocationEntity(hass: HomeAssistant, entityId: string): boolean {
+  const domain = entityId.split(".")[0];
+  if (LOCATION_DOMAINS.has(domain)) return true;
+  const attrs = hass.states[entityId]?.attributes;
+  return typeof attrs?.latitude === "number" && typeof attrs?.longitude === "number";
+}
+
+export interface LocationHistoryPoint {
+  lat: number;
+  lon: number;
+  state: string;
+  last_changed: string;
+}
+
+/** Slippy-map global pixel coordinates (256px tiles) for a lat/lon at a zoom level. */
+export function latLonToPixel(lat: number, lon: number, zoom: number): { x: number; y: number } {
+  const scale = 256 * Math.pow(2, zoom);
+  const x = ((lon + 180) / 360) * scale;
+  const sinLat = Math.max(-0.9999, Math.min(0.9999, Math.sin((lat * Math.PI) / 180)));
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+  return { x, y };
+}
+
+/** A readable label for a device_tracker/person state ("not_home" -> "Not home"). */
+export function formatLocationState(state: string): string {
+  const spaced = state.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 // A curated shortlist of common Android package names, searchable in a
