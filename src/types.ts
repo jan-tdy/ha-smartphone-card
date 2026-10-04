@@ -24,7 +24,7 @@ export interface SmartphoneCardStatusBar {
 
 export type SmartphoneCardMode = "list" | "phone";
 
-export type SmartphoneCardQuickActionType = "service" | "message" | "toggle";
+export type SmartphoneCardQuickActionType = "service" | "message" | "toggle" | "app";
 
 export interface SmartphoneCardQuickAction {
   /** "service" (default): call `service` immediately with `entity_id`/`data`.
@@ -32,7 +32,10 @@ export interface SmartphoneCardQuickAction {
    * notify.* service name) and tapping opens a compose sheet (title/message/
    * priority/channel) instead of calling anything right away.
    * "toggle": shows a switch instead of a tappable row. `service`/`data` are
-   * called when turning on, `service_off`/`data_off` when turning off. */
+   * called when turning on, `service_off`/`data_off` when turning off.
+   * "app": `service` is a legacy notify.* service (the Android companion
+   * app's command_launch_app needs the arbitrary `data` dict a notify entity
+   * can't take) and `package_name` names the app to launch. */
   type?: SmartphoneCardQuickActionType;
   /** Required for "service"/"message". Optional for "toggle" when `entity_id`
    * is a toggleable domain entity and no explicit on/off services are needed. */
@@ -47,6 +50,8 @@ export interface SmartphoneCardQuickAction {
    * toggles that entity directly. Otherwise the on/off state is tracked locally
    * in the card (and resets on reload) since there's no real entity to read it from. */
   state_entity?: string;
+  /** "app" type only: the Android package name to launch, e.g. "com.whatsapp". */
+  package_name?: string;
   name?: string;
   icon?: string;
 }

@@ -141,12 +141,26 @@ Tap the camera notch or the device name in the status bar to open a sheet listin
 
 | Key | Description |
 |---|---|
-| `type` | `service` (default) — call `service` immediately — `message` — open a compose dialog — or `toggle` — show a switch instead of a tappable row |
-| `service` | `domain.service` to call, or (when `type: message`) the notify target, or (when `type: toggle`) the "turn on" service |
-| `entity_id` | optional, passed as the service call's `entity_id` (ignored for `type: message`); for `type: toggle`, also used to read the current on/off state when it's a toggleable domain |
-| `data` | optional extra service data, merged with `entity_id` (ignored for `type: message`); for `type: toggle`, used on the "turn on" call |
+| `type` | `service` (default) — call `service` immediately — `message` — open a compose dialog — `toggle` — show a switch — or `app` — launch an app on the phone |
+| `service` | `domain.service` to call, or (when `type: message`) the notify target, or (when `type: toggle`) the "turn on" service, or (when `type: app`) the legacy `notify.*` service to send `command_launch_app` through |
+| `entity_id` | optional, passed as the service call's `entity_id` (ignored for `type: message`/`type: app`); for `type: toggle`, also used to read the current on/off state when it's a toggleable domain |
+| `data` | optional extra service data, merged with `entity_id` (ignored for `type: message`/`type: app`); for `type: toggle`, used on the "turn on" call |
 | `service_off`, `data_off` | `type: toggle` only — service/data used for the "turn off" call (defaults to `service`/`data`) |
 | `state_entity` | `type: toggle` only — entity whose state is read for on/off, when it's different from the entity `service`/`service_off` act on (or when there's no real entity at all) |
+| `package_name` | `type: app` only — the Android package name to launch, e.g. `com.whatsapp` |
+
+### Launch app quick actions
+
+```yaml
+quick_actions:
+  - icon: mdi:whatsapp
+    name: Open WhatsApp
+    type: app
+    service: notify.mobile_app_sm_a346b
+    package_name: com.whatsapp
+```
+
+The editor's app picker is a searchable dropdown pre-filled with common apps (WhatsApp, Chrome, Gmail, Maps, Spotify, Instagram...) but also takes any custom package name you type — there's no API for Home Assistant to list what's actually installed on the phone, so pick from the list or type the package name yourself (it's the id shown on the app's Play Store URL, e.g. `play.google.com/store/apps/details?id=com.whatsapp`). This uses the same `command_launch_app` companion-app command as a `type: service` quick action would, just with a dedicated picker instead of hand-writing the `data` object. **Requires the "Display over other apps" permission**, which the app will prompt for the first time you use it.
 
 ### Toggle quick actions
 
@@ -220,6 +234,20 @@ The `notify.mobile_app_<device>` quick-action examples above use the Android com
 | `command_webview` | `command` (optional): a dashboard path or entity id | Open the app to the homepage or a specific dashboard/view |
 
 There is no "find phone / ring loudly" command built into the app. Replace `notify.mobile_app_sm_a346b` with your own device's notify target in all of the above.
+
+#### These commands need Android permissions enabled first
+
+The service call always succeeds (it's just a notification sent to the phone), but the phone silently ignores the command unless the required permission is granted — this is the most common reason a command "does nothing":
+
+| Command(s) | Required permission |
+|---|---|
+| `command_flashlight` | **Camera** permission, plus **Display over other apps** |
+| `command_launch_app` | **Display over other apps** (the app prompts for this the first time you send the command) |
+| `command_dnd`, `command_ringer_mode` | **Do Not Disturb access** (Notification policy access) — the app can't prompt for this one; grant it manually under Android Settings → Apps → Special app access → Do Not Disturb access → Home Assistant. On Android 15+, the app can only turn DND back off if it was the one that turned it on |
+| `command_high_accuracy_mode` | **Location** permission, with location services turned on |
+| `command_bluetooth` | On Android 12+, also **Nearby devices** permission |
+
+Also make sure the Home Assistant app itself is excluded from battery optimization (Android Settings → Apps → Home Assistant → Battery) and has notification access enabled (Android Settings → Apps → Special app access → Notification access → Home Assistant) — otherwise Android can suspend the app in the background before it processes the command at all.
 
 ## Phone frame color
 

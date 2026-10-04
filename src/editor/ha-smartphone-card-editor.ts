@@ -35,6 +35,38 @@ const QUICK_ACTION_TYPE_SELECTOR = {
       { value: "service", label: "Run a service" },
       { value: "message", label: "Send message (compose dialog)" },
       { value: "toggle", label: "Toggle (switch)" },
+      { value: "app", label: "Launch app" },
+    ],
+  },
+} as const;
+
+// A curated shortlist of common Android package names, searchable in the
+// dropdown; custom_value lets anyone type a package that isn't listed.
+const APP_SELECTOR = {
+  select: {
+    mode: "dropdown",
+    custom_value: true,
+    options: [
+      { value: "com.whatsapp", label: "WhatsApp" },
+      { value: "com.android.chrome", label: "Chrome" },
+      { value: "com.google.android.gm", label: "Gmail" },
+      { value: "com.google.android.apps.maps", label: "Google Maps" },
+      { value: "com.google.android.youtube", label: "YouTube" },
+      { value: "com.spotify.music", label: "Spotify" },
+      { value: "com.instagram.android", label: "Instagram" },
+      { value: "com.facebook.katana", label: "Facebook" },
+      { value: "com.facebook.orca", label: "Messenger" },
+      { value: "org.telegram.messenger", label: "Telegram" },
+      { value: "org.thoughtcrime.securesms", label: "Signal" },
+      { value: "com.twitter.android", label: "X (Twitter)" },
+      { value: "com.android.camera2", label: "Camera" },
+      { value: "com.android.dialer", label: "Phone" },
+      { value: "com.android.vending", label: "Play Store" },
+      { value: "io.homeassistant.companion.android", label: "Home Assistant" },
+      { value: "com.netflix.mediaclient", label: "Netflix" },
+      { value: "com.google.android.apps.photos", label: "Google Photos" },
+      { value: "com.google.android.calendar", label: "Google Calendar" },
+      { value: "com.google.android.deskclock", label: "Clock" },
     ],
   },
 } as const;
@@ -340,7 +372,29 @@ export class HaSmartphoneCardEditor extends LitElement implements LovelaceCardEd
               ></ha-selector>`
             : qaType === "toggle"
               ? this._renderToggleQuickActionFields(action, index)
-              : html`
+              : qaType === "app"
+                ? html`
+                    <ha-service-picker
+                      .hass=${this.hass}
+                      label="Notify service (a legacy notify.* service, e.g. notify.mobile_app_sm_a346b)"
+                      .value=${action.service ?? ""}
+                      @value-changed=${(e: CustomEvent) => {
+                        e.stopPropagation();
+                        this._updateQuickAction(index, { service: e.detail.value });
+                      }}
+                    ></ha-service-picker>
+                    <ha-selector
+                      .hass=${this.hass}
+                      .selector=${APP_SELECTOR}
+                      label="App to launch (pick one or type a package name)"
+                      .value=${action.package_name ?? ""}
+                      @value-changed=${(e: CustomEvent) => {
+                        e.stopPropagation();
+                        this._updateQuickAction(index, { package_name: e.detail.value });
+                      }}
+                    ></ha-selector>
+                  `
+                : html`
                   <div class="row-editor-line">
                     <ha-service-picker
                       .hass=${this.hass}
