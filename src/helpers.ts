@@ -231,15 +231,6 @@ export interface LocationHistoryPoint {
   last_changed: string;
 }
 
-/** Slippy-map global pixel coordinates (256px tiles) for a lat/lon at a zoom level. */
-export function latLonToPixel(lat: number, lon: number, zoom: number): { x: number; y: number } {
-  const scale = 256 * Math.pow(2, zoom);
-  const x = ((lon + 180) / 360) * scale;
-  const sinLat = Math.max(-0.9999, Math.min(0.9999, Math.sin((lat * Math.PI) / 180)));
-  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
-  return { x, y };
-}
-
 /** A readable label for a device_tracker/person state ("not_home" -> "Not home"). */
 export function formatLocationState(state: string): string {
   const spaced = state.replace(/_/g, " ");

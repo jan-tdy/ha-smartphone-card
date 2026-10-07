@@ -1,4 +1,4 @@
-import { LitElement, html, svg, css, CSSResultGroup, SVGTemplateResult, TemplateResult, nothing } from "lit";
+import { LitElement, html, css, CSSResultGroup, TemplateResult, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { HomeAssistant, LovelaceCard, LovelaceCardEditor, computeDomain, toggleEntity } from "custom-card-helpers";
 import { CARD_TYPE, EDITOR_TYPE } from "./const";
@@ -22,7 +22,6 @@ import {
   isMostlyNumeric,
   isOn,
   isToggleableDomain,
-  latLonToPixel,
   LocationHistoryPoint,
   stateOf,
 } from "./helpers";
@@ -70,6 +69,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _historyPoints?: HistoryPoint[];
 
   @state() private _locationHistory?: LocationHistoryPoint[];
+
+  @state() private _mapReady = false;
 
   @state() private _composeTarget?: { service: string; name?: string };
 
@@ -161,9 +162,33 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._locationHistory = undefined;
     if (isLocationEntity(this.hass, entityId)) {
       this._loadLocationHistory(entityId);
+      this._ensureMapLoaded();
     } else {
       this._loadHistory(entityId);
     }
+  }
+
+  /** <ha-map> is part of the Home Assistant frontend, used by its native History/Map
+   * panels, but isn't guaranteed to be registered yet (e.g. if the user never opened
+   * one of those). Instantiating a hidden "map" card via the frontend's own card-helper
+   * API forces it to load, the same trick other custom cards use to pull in HA elements
+   * on demand instead of bundling a map library (and its tile-provider choice) themselves. */
+  private async _ensureMapLoaded() {
+    if (customElements.get("ha-map")) {
+      this._mapReady = true;
+      return;
+    }
+    try {
+      const loadCardHelpers = (window as any).loadCardHelpers;
+      if (loadCardHelpers) {
+        const helpers = await loadCardHelpers();
+        await helpers.createCardElement({ type: "map", entities: [] });
+      }
+    } catch {
+      // Older/unusual frontends without loadCardHelpers: fall through to the
+      // "Loading map…" placeholder staying put, which is the best we can do.
+    }
+    this._mapReady = !!customElements.get("ha-map");
   }
 
   private _closeSheet() {
@@ -826,80 +851,29 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       return html`<div class="sheet-history-loading">No location data.</div>`;
     }
 
-    const zoom = 15;
-    const W = 280;
-    const H = 160;
-    const tileSize = 256;
-    const center = latLonToPixel(lat, lon, zoom);
-    const originX = center.x - W / 2;
-    const originY = center.y - H / 2;
-    const tileCount = Math.pow(2, zoom);
-
-    const startTileX = Math.floor(originX / tileSize);
-    const startTileY = Math.floor(originY / tileSize);
-    const endTileX = Math.floor((originX + W) / tileSize);
-    const endTileY = Math.floor((originY + H) / tileSize);
-
-    // tile.openstreetmap.org's usage policy explicitly disallows embedding
-    // it in distributed apps/software (only ad-hoc/low-volume browser use is
-    // allowed there) and blocks requests from cards like this with a 403.
-    // CARTO's basemap CDN is free and meant for exactly this kind of use.
-    const CARTO_SUBDOMAINS = ["a", "b", "c", "d"];
-    const tiles: SVGTemplateResult[] = [];
-    for (let ty = startTileY; ty <= endTileY; ty++) {
-      for (let tx = startTileX; tx <= endTileX; tx++) {
-        const wrappedX = ((tx % tileCount) + tileCount) % tileCount;
-        const subdomain = CARTO_SUBDOMAINS[(wrappedX + ty) % CARTO_SUBDOMAINS.length];
-        tiles.push(svg`
-          <image
-            href="https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${wrappedX}/${ty}.png"
-            x=${tx * tileSize - originX}
-            y=${ty * tileSize - originY}
-            width=${tileSize}
-            height=${tileSize}
-            @error=${(e: Event) => {
-              (e.target as SVGImageElement).style.display = "none";
-            }}
-          />
-        `);
-      }
-    }
-
     const points = this._locationHistory ?? [];
-    const toLocal = (plat: number, plon: number) => {
-      const p = latLonToPixel(plat, plon, zoom);
-      return { x: p.x - originX, y: p.y - originY };
-    };
-    const trail = points.map((p) => toLocal(p.lat, p.lon));
-    const trailCoords = trail.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-
     const recent = [...points].reverse().slice(0, 6);
+    const paths =
+      points.length > 1
+        ? [
+            {
+              points: points.map((p) => ({ point: [p.lat, p.lon] as [number, number] })),
+              color: "var(--primary-color)",
+            },
+          ]
+        : [];
 
     return html`
       <div class="location-map">
-        <svg class="location-map-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">
-          <clipPath id="map-clip-${entityId.replace(/[^a-zA-Z0-9]/g, "")}">
-            <rect x="0" y="0" width=${W} height=${H} rx="12" />
-          </clipPath>
-          <g clip-path="url(#map-clip-${entityId.replace(/[^a-zA-Z0-9]/g, "")})">
-            ${tiles}
-            ${trail.length > 1
-              ? svg`<polyline
-                    points=${trailCoords}
-                    fill="none"
-                    stroke="var(--primary-color)"
-                    stroke-width="2"
-                    stroke-opacity="0.8"
-                    vector-effect="non-scaling-stroke"
-                  />`
-              : nothing}
-            ${trail.slice(0, -1).map(
-              (p) => svg`<circle cx=${p.x} cy=${p.y} r="2.5" fill="var(--primary-color)" fill-opacity="0.7" />`
-            )}
-            <circle cx=${W / 2} cy=${H / 2} r="7" fill="var(--primary-color)" stroke="white" stroke-width="2" />
-          </g>
-        </svg>
-        <div class="location-map-attribution">© OpenStreetMap contributors © CARTO</div>
+        ${this._mapReady
+          ? html`<ha-map
+              .hass=${this.hass}
+              .entities=${[{ entity_id: entityId }]}
+              .paths=${paths}
+              .autoFit=${true}
+              style="height: 180px; border-radius: 12px; display: block; overflow: hidden;"
+            ></ha-map>`
+          : html`<div class="sheet-history-loading">Loading map…</div>`}
         ${recent.length
           ? html`
               <div class="location-timeline">
@@ -1309,19 +1283,6 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       }
       .location-map {
         margin-top: 12px;
-      }
-      .location-map-svg {
-        width: 100%;
-        height: 160px;
-        display: block;
-        border-radius: 12px;
-        background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
-      }
-      .location-map-attribution {
-        margin-top: 4px;
-        font-size: 9px;
-        color: var(--secondary-text-color);
-        text-align: right;
       }
       .location-timeline {
         margin-top: 10px;

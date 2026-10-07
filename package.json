@@ -1,6 +1,6 @@
 {
   "name": "ha-smartphone-card",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A Home Assistant Lovelace card for smartphone companion-app sensors, with a list view and a phone-like view.",
   "main": "dist/ha-smartphone-card.js",
   "type": "module",
