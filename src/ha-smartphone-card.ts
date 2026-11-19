@@ -101,6 +101,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
 
   @state() private _appPickerValue = "";
 
+  @state() private _appPickerSending = false;
+
+  @state() private _pendingToggles: Record<number, boolean> = {};
+
   private _clockInterval?: ReturnType<typeof setInterval>;
 
   public static getConfigElement(): LovelaceCardEditor {
@@ -324,28 +328,37 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   }
 
   private async _toggleQuickAction(action: SmartphoneCardQuickAction, index: number) {
-    const entityDomain = action.entity_id ? computeDomain(action.entity_id) : undefined;
-    if (action.entity_id && entityDomain && isToggleableDomain(entityDomain) && !action.service) {
-      try {
-        await toggleEntity(this.hass, action.entity_id);
-      } catch (err) {
-        this._notifyServiceError(entityDomain, "toggle", err);
+    // Ignore a repeat tap while this action's call is still in flight: the
+    // on/off decision below is only correct once the previous call has
+    // settled and (for local state) updated _localToggleStates.
+    if (this._pendingToggles[index]) return;
+    this._pendingToggles = { ...this._pendingToggles, [index]: true };
+    try {
+      const entityDomain = action.entity_id ? computeDomain(action.entity_id) : undefined;
+      if (action.entity_id && entityDomain && isToggleableDomain(entityDomain) && !action.service) {
+        try {
+          await toggleEntity(this.hass, action.entity_id);
+        } catch (err) {
+          this._notifyServiceError(entityDomain, "toggle", err);
+        }
+        return;
       }
-      return;
-    }
 
-    const turningOn = !this._isQuickActionOn(action, index);
-    const service = turningOn ? action.service : action.service_off || action.service;
-    const [domain, serviceName] = (service ?? "").split(".");
-    if (!domain || !serviceName) return;
+      const turningOn = !this._isQuickActionOn(action, index);
+      const service = turningOn ? action.service : action.service_off || action.service;
+      const [domain, serviceName] = (service ?? "").split(".");
+      if (!domain || !serviceName) return;
 
-    const data: Record<string, unknown> = { ...(turningOn ? action.data : action.data_off ?? action.data) };
-    if (action.entity_id) data.entity_id = action.entity_id;
-    const succeeded = await this._callService(domain, serviceName, data);
-    // Only flip the toggle once the service call actually succeeds, so a
-    // failed call doesn't leave the UI showing the opposite of reality.
-    if (succeeded && !action.state_entity) {
-      this._localToggleStates = { ...this._localToggleStates, [index]: turningOn };
+      const data: Record<string, unknown> = { ...(turningOn ? action.data : action.data_off ?? action.data) };
+      if (action.entity_id) data.entity_id = action.entity_id;
+      const succeeded = await this._callService(domain, serviceName, data);
+      // Only flip the toggle once the service call actually succeeds, so a
+      // failed call doesn't leave the UI showing the opposite of reality.
+      if (succeeded && !action.state_entity) {
+        this._localToggleStates = { ...this._localToggleStates, [index]: turningOn };
+      }
+    } finally {
+      this._pendingToggles = { ...this._pendingToggles, [index]: false };
     }
   }
 
@@ -393,7 +406,10 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
 
     // Keep the sheet open on failure so the message isn't lost and the user
     // can retry; only discard it once the service call actually succeeded.
-    if (succeeded) this._closeCompose();
+    // Also check the sheet is still showing this same submission: the user
+    // may have dismissed it and opened a different compose draft while this
+    // call was in flight, and closing now would discard that new draft.
+    if (succeeded && this._composeTarget === target) this._closeCompose();
   }
 
   private async _launchApp(service: string | undefined, packageName: string): Promise<boolean> {
@@ -418,9 +434,13 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
 
   private async _submitAppPicker() {
     const target = this._appPickerTarget;
-    if (!target || !this._appPickerValue.trim()) return;
+    if (!target || !this._appPickerValue.trim() || this._appPickerSending) return;
+    this._appPickerSending = true;
     const succeeded = await this._launchApp(target.service, this._appPickerValue.trim());
-    if (succeeded) this._closeAppPicker();
+    this._appPickerSending = false;
+    // Same stale-sheet guard as _submitCompose: don't close a picker the
+    // user has since reopened for a different target.
+    if (succeeded && this._appPickerTarget === target) this._closeAppPicker();
   }
 
   private _renderRow(row: SmartphoneCardRow, onTap: (entityId: string) => void): TemplateResult {
@@ -636,8 +656,13 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             ${actions.map((qa, index) => {
               const isToggle = qa.type === "toggle";
               const on = isToggle && this._isQuickActionOn(qa, index);
+              const pending = isToggle && this._pendingToggles[index];
               return html`
-                <button class="quick-action-row" @click=${() => this._runQuickAction(qa, index)}>
+                <button
+                  class="quick-action-row"
+                  ?disabled=${pending}
+                  @click=${() => this._runQuickAction(qa, index)}
+                >
                   <ha-icon icon=${qa.icon ?? "mdi:flash"}></ha-icon>
                   <span>${qa.name ?? qa.package_name ?? qa.service ?? qa.entity_id ?? "Quick action"}</span>
                   ${isToggle ? html`<ha-switch .checked=${on} tabindex="-1"></ha-switch>` : nothing}
@@ -655,7 +680,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     if (!target) return html``;
     const isEntity = this._isNotifyEntity(target.service);
     return html`
-      <div class="sheet-backdrop" @click=${() => this._closeCompose()}>
+      <div class="sheet-backdrop" @click=${() => !this._composeSending && this._closeCompose()}>
         <div class="sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="sheet-handle"></div>
           <div class="sheet-title">${target.name ?? "Send message"}</div>
@@ -726,7 +751,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const target = this._appPickerTarget;
     if (!target) return html``;
     return html`
-      <div class="sheet-backdrop" @click=${() => this._closeAppPicker()}>
+      <div class="sheet-backdrop" @click=${() => !this._appPickerSending && this._closeAppPicker()}>
         <div class="sheet" @click=${(e: Event) => e.stopPropagation()}>
           <div class="sheet-handle"></div>
           <div class="sheet-title">${target.name ?? "Launch app"}</div>
@@ -743,13 +768,15 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
             ></ha-selector>
           </div>
           <div class="sheet-actions">
-            <button class="sheet-btn" @click=${() => this._closeAppPicker()}>Cancel</button>
+            <button class="sheet-btn" ?disabled=${this._appPickerSending} @click=${() => this._closeAppPicker()}>
+              Cancel
+            </button>
             <button
               class="sheet-btn primary"
-              ?disabled=${!this._appPickerValue.trim()}
+              ?disabled=${!this._appPickerValue.trim() || this._appPickerSending}
               @click=${() => this._submitAppPicker()}
             >
-              Launch
+              ${this._appPickerSending ? "Launching…" : "Launch"}
             </button>
           </div>
         </div>
