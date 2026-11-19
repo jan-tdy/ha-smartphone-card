@@ -1,6 +1,13 @@
 import { LitElement, html, css, CSSResultGroup, TemplateResult, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { HomeAssistant, LovelaceCard, LovelaceCardEditor, computeDomain, toggleEntity } from "custom-card-helpers";
+import {
+  HomeAssistant,
+  LovelaceCard,
+  LovelaceCardEditor,
+  computeDomain,
+  fireEvent,
+  toggleEntity,
+} from "custom-card-helpers";
 import { CARD_TYPE, EDITOR_TYPE } from "./const";
 import { SmartphoneCardConfig, SmartphoneCardQuickAction, SmartphoneCardRow } from "./types";
 import {
@@ -32,6 +39,12 @@ interface LayoutOptions {
   grid_rows?: number;
   grid_min_columns?: number;
   grid_min_rows?: number;
+}
+
+declare global {
+  interface HASSDomEvents {
+    "hass-notification": { message: string; duration?: number };
+  }
 }
 
 const COMPOSE_TEXT_SELECTOR = { text: {} } as const;
@@ -81,6 +94,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   @state() private _composePriority = "normal";
 
   @state() private _composeChannel = "";
+
+  @state() private _composeSending = false;
 
   @state() private _appPickerTarget?: { service: string; name?: string };
 
@@ -197,9 +212,35 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._locationHistory = undefined;
   }
 
-  private _toggleSheetEntity() {
+  private async _callService(
+    domain: string,
+    service: string,
+    data?: Record<string, unknown>,
+    target?: Record<string, unknown>
+  ): Promise<boolean> {
+    try {
+      await this.hass.callService(domain, service, data, target);
+      return true;
+    } catch (err) {
+      this._notifyServiceError(domain, service, err);
+      return false;
+    }
+  }
+
+  private _notifyServiceError(domain: string, service: string, err: unknown) {
+    const reason = err instanceof Error ? err.message : String(err);
+    fireEvent(this, "hass-notification", {
+      message: `Calling ${domain}.${service} failed: ${reason}`,
+    });
+  }
+
+  private async _toggleSheetEntity() {
     if (!this._sheetEntityId) return;
-    toggleEntity(this.hass, this._sheetEntityId);
+    try {
+      await toggleEntity(this.hass, this._sheetEntityId);
+    } catch (err) {
+      this._notifyServiceError(computeDomain(this._sheetEntityId), "toggle", err);
+    }
   }
 
   private async _loadHistory(entityId: string) {
@@ -270,7 +311,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     if (!domain || !service) return;
     const data: Record<string, unknown> = { ...action.data };
     if (action.entity_id) data.entity_id = action.entity_id;
-    this.hass.callService(domain, service, data);
+    this._callService(domain, service, data);
     this._closeQuickActions();
   }
 
@@ -282,22 +323,28 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     return this._localToggleStates[index] ?? false;
   }
 
-  private _toggleQuickAction(action: SmartphoneCardQuickAction, index: number) {
+  private async _toggleQuickAction(action: SmartphoneCardQuickAction, index: number) {
     const entityDomain = action.entity_id ? computeDomain(action.entity_id) : undefined;
     if (action.entity_id && entityDomain && isToggleableDomain(entityDomain) && !action.service) {
-      toggleEntity(this.hass, action.entity_id);
+      try {
+        await toggleEntity(this.hass, action.entity_id);
+      } catch (err) {
+        this._notifyServiceError(entityDomain, "toggle", err);
+      }
       return;
     }
 
     const turningOn = !this._isQuickActionOn(action, index);
     const service = turningOn ? action.service : action.service_off || action.service;
     const [domain, serviceName] = (service ?? "").split(".");
-    if (domain && serviceName) {
-      const data: Record<string, unknown> = { ...(turningOn ? action.data : action.data_off ?? action.data) };
-      if (action.entity_id) data.entity_id = action.entity_id;
-      this.hass.callService(domain, serviceName, data);
-    }
-    if (!action.state_entity) {
+    if (!domain || !serviceName) return;
+
+    const data: Record<string, unknown> = { ...(turningOn ? action.data : action.data_off ?? action.data) };
+    if (action.entity_id) data.entity_id = action.entity_id;
+    const succeeded = await this._callService(domain, serviceName, data);
+    // Only flip the toggle once the service call actually succeeds, so a
+    // failed call doesn't leave the UI showing the opposite of reality.
+    if (succeeded && !action.state_entity) {
       this._localToggleStates = { ...this._localToggleStates, [index]: turningOn };
     }
   }
@@ -320,17 +367,19 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     return computeDomain(service) === "notify" && !!this.hass.states[service];
   }
 
-  private _submitCompose() {
+  private async _submitCompose() {
     const target = this._composeTarget;
-    if (!target || !this._composeMessage.trim()) return;
+    if (!target || !this._composeMessage.trim() || this._composeSending) return;
 
     const serviceData: Record<string, unknown> = { message: this._composeMessage };
     if (this._composeTitle.trim()) serviceData.title = this._composeTitle.trim();
 
+    this._composeSending = true;
+    let succeeded: boolean;
     if (this._isNotifyEntity(target.service)) {
       // The generic notify.send_message action only accepts message/title —
       // no extra "data" key — so priority/channel are legacy-service only.
-      this.hass.callService("notify", "send_message", serviceData, { entity_id: target.service });
+      succeeded = await this._callService("notify", "send_message", serviceData, { entity_id: target.service });
     } else {
       const data: Record<string, unknown> = {};
       if (this._composeChannel.trim()) data.channel = this._composeChannel.trim();
@@ -338,16 +387,19 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
       if (Object.keys(data).length) serviceData.data = data;
 
       const [domain, service] = target.service.split(".");
-      if (domain && service) this.hass.callService(domain, service, serviceData);
+      succeeded = domain && service ? await this._callService(domain, service, serviceData) : false;
     }
+    this._composeSending = false;
 
-    this._closeCompose();
+    // Keep the sheet open on failure so the message isn't lost and the user
+    // can retry; only discard it once the service call actually succeeded.
+    if (succeeded) this._closeCompose();
   }
 
-  private _launchApp(service: string | undefined, packageName: string) {
+  private async _launchApp(service: string | undefined, packageName: string): Promise<boolean> {
     const [domain, serviceName] = (service ?? "").split(".");
-    if (!domain || !serviceName || !packageName) return;
-    this.hass.callService(domain, serviceName, {
+    if (!domain || !serviceName || !packageName) return false;
+    return this._callService(domain, serviceName, {
       message: "command_launch_app",
       data: { package_name: packageName },
     });
@@ -364,11 +416,11 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     this._appPickerTarget = undefined;
   }
 
-  private _submitAppPicker() {
+  private async _submitAppPicker() {
     const target = this._appPickerTarget;
     if (!target || !this._appPickerValue.trim()) return;
-    this._launchApp(target.service, this._appPickerValue.trim());
-    this._closeAppPicker();
+    const succeeded = await this._launchApp(target.service, this._appPickerValue.trim());
+    if (succeeded) this._closeAppPicker();
   }
 
   private _renderRow(row: SmartphoneCardRow, onTap: (entityId: string) => void): TemplateResult {
@@ -654,13 +706,15 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
                 `}
           </div>
           <div class="sheet-actions">
-            <button class="sheet-btn" @click=${() => this._closeCompose()}>Cancel</button>
+            <button class="sheet-btn" ?disabled=${this._composeSending} @click=${() => this._closeCompose()}>
+              Cancel
+            </button>
             <button
               class="sheet-btn primary"
-              ?disabled=${!this._composeMessage.trim()}
+              ?disabled=${!this._composeMessage.trim() || this._composeSending}
               @click=${() => this._submitCompose()}
             >
-              Send
+              ${this._composeSending ? "Sending…" : "Send"}
             </button>
           </div>
         </div>
