@@ -648,7 +648,7 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </div>
         </div>
       </div>
-    `}_renderHistory(t){const e=this._historyPoints;return void 0===e?j`<div class="sheet-history-loading">Loading 24h history…</div>`:e.length<2?U:function(t){if(!t.length)return!1;const e=t.filter(t=>""!==t.state&&!Number.isNaN(Number(t.state)));return e.length/t.length>.8}(e)?this._renderSparkline(e,t):this._renderHistoryList(e)}_renderSparkline(t,e){const i=t.map(t=>({time:new Date(t.last_changed).getTime(),value:Number(t.state)})).filter(t=>!Number.isNaN(t.value));if(i.length<2)return U;const o=i.map(t=>t.value),n=Math.min(...o),a=Math.max(...o),r=(n+a)/2,s=a-n||1,l=230,c=44,d=i[0].time,h=i[i.length-1].time,u=h-d||1,p=i.map(t=>`${((t.time-d)/u*l).toFixed(1)},${(c-(t.value-n)/s*c).toFixed(1)}`).join(" "),v=t=>`${Math.round(10*t)/10}${e?` ${e}`:""}`,f=this._formatHistoryTime(new Date(d).toISOString()),g=this._formatHistoryTime(new Date(h).toISOString()),m=this._formatHistoryTime(new Date((d+h)/2).toISOString());return j`
+    `}_renderHistory(t){const e=this._historyPoints;return void 0===e?j`<div class="sheet-history-loading">Loading 24h history…</div>`:e.length<2?U:function(t){if(!t.length)return!1;const e=t.filter(t=>""!==t.state&&!Number.isNaN(Number(t.state)));return e.length/t.length>.8}(e)?this._renderSparkline(e,t):this._renderHistoryList(e)}_renderSparkline(t,e){const i=t.map(t=>({time:new Date(t.last_changed).getTime(),value:Number(t.state)})).filter(t=>!Number.isNaN(t.value));if(i.length<2)return U;const o=i.map(t=>t.value),n=Math.min(...o),a=Math.max(...o),r=(n+a)/2,s=a-n||1,l=230,c=44,d=i[0].time,h=i[i.length-1].time,u=h-d||1,p=i.map(t=>`${((t.time-d)/u*l).toFixed(1)},${(c-(t.value-n)/s*c).toFixed(1)}`).join(" "),v=t=>`${Math.round(10*t)/10}${e?` ${e}`:""}`,g=this._formatHistoryTime(new Date(d).toISOString()),f=this._formatHistoryTime(new Date(h).toISOString()),m=this._formatHistoryTime(new Date((d+h)/2).toISOString());return j`
       <div class="sheet-history">
         <div class="sheet-chart">
           <div class="sheet-chart-yaxis">
@@ -684,9 +684,9 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </svg>
         </div>
         <div class="sheet-history-time-axis">
-          <span>${f}</span>
-          <span>${m}</span>
           <span>${g}</span>
+          <span>${m}</span>
+          <span>${f}</span>
         </div>
       </div>
     `}_formatHistoryTime(t){return new Date(t).toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"})}_renderHistoryList(t){const e=t.slice(-5).reverse();return j`
