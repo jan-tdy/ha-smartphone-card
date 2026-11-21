@@ -904,7 +904,7 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
               vector-effect="non-scaling-stroke"
             />
             <polyline
-              points=${coords}
+              points=${coords.join(" ")}
               fill="none"
               stroke="var(--primary-color)"
               stroke-width="2"
