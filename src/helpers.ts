@@ -177,6 +177,14 @@ export function isOn(hass: HomeAssistant, entityId?: string): boolean {
   if (!entityId) return false;
   const stateObj = hass.states[entityId];
   if (!stateObj) return false;
+
+  const activeStatesByDomain: Record<string, Set<string>> = {
+    cover: new Set(["open", "opening"]),
+    lock: new Set(["unlocked", "unlocking", "opening", "open"]),
+  };
+  const domain = entityId.split(".")[0];
+  const activeStates = activeStatesByDomain[domain];
+  if (activeStates) return activeStates.has(stateObj.state);
   return stateObj.state === "on" || stateObj.state === "home" || stateObj.state === "connected";
 }
 

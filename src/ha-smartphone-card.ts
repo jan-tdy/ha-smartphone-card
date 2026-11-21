@@ -862,7 +862,8 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const h = 44;
     const xFor = (timestamp: number) => Math.max(0, Math.min(w, ((timestamp - windowStart) / (windowEnd - windowStart)) * w));
     const yFor = (value: number) => h - ((value - min) / range) * h;
-    const coords = ["0," + yFor(series[0].value).toFixed(1)];
+    const initialX = series[0].timestamp < windowStart ? 0 : xFor(series[0].timestamp);
+    const coords = [initialX.toFixed(1) + "," + yFor(series[0].value).toFixed(1)];
     let previous = series[0];
     for (const current of series.slice(1)) {
       const x = xFor(current.timestamp).toFixed(1);
