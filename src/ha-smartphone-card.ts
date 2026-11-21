@@ -842,7 +842,17 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   }
 
   private _renderSparkline(points: HistoryPoint[], unit: string) {
-    const values = points.map((p) => Number(p.state)).filter((v) => !Number.isNaN(v));
+    const numeric = points
+      .map((point) => ({ value: Number(point.state), timestamp: Date.parse(point.last_changed), state: point.state }))
+      .filter((point) => point.state.trim() !== "" && Number.isFinite(point.value) && Number.isFinite(point.timestamp))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    if (numeric.length < 2) return nothing;
+    const windowEnd = Date.now();
+    const windowStart = windowEnd - 24 * 60 * 60 * 1000;
+    const firstInWindow = numeric.findIndex((point) => point.timestamp >= windowStart);
+    const startIndex = firstInWindow < 0 ? numeric.length - 1 : Math.max(0, firstInWindow - 1);
+    const series = numeric.slice(startIndex);
+    const values = series.map((point) => point.value);
     if (values.length < 2) return nothing;
     const min = Math.min(...values);
     const max = Math.max(...values);
@@ -850,15 +860,22 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
     const range = max - min || 1;
     const w = 230;
     const h = 44;
-    const stepX = w / (values.length - 1);
-    const coords = values
-      .map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
-      .join(" ");
+    const xFor = (timestamp: number) => Math.max(0, Math.min(w, ((timestamp - windowStart) / (windowEnd - windowStart)) * w));
+    const yFor = (value: number) => h - ((value - min) / range) * h;
+    const coords = ["0," + yFor(series[0].value).toFixed(1)];
+    let previous = series[0];
+    for (const current of series.slice(1)) {
+      const x = xFor(current.timestamp).toFixed(1);
+      coords.push(x + "," + yFor(previous.value).toFixed(1));
+      coords.push(x + "," + yFor(current.value).toFixed(1));
+      previous = current;
+    }
+    coords.push(w + "," + yFor(previous.value).toFixed(1));
     const fmt = (v: number) => `${Math.round(v * 10) / 10}${unit ? ` ${unit}` : ""}`;
 
-    const startTime = this._formatHistoryTime(points[0].last_changed);
-    const endTime = this._formatHistoryTime(points[points.length - 1].last_changed);
-    const midTime = this._formatHistoryTime(points[Math.floor(points.length / 2)].last_changed);
+    const startTime = this._formatHistoryTime(new Date(windowStart).toISOString());
+    const endTime = this._formatHistoryTime(new Date(windowEnd).toISOString());
+    const midTime = this._formatHistoryTime(new Date((windowStart + windowEnd) / 2).toISOString());
 
     return html`
       <div class="sheet-history">
