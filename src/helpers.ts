@@ -180,7 +180,7 @@ export function isOn(hass: HomeAssistant, entityId?: string): boolean {
 
   const activeStatesByDomain: Record<string, Set<string>> = {
     cover: new Set(["open", "opening"]),
-    lock: new Set(["unlocked", "unlocking", "open"]),
+    lock: new Set(["unlocked", "unlocking", "opening", "open"]),
   };
   const domain = entityId.split(".")[0];
   const activeStates = activeStatesByDomain[domain];
