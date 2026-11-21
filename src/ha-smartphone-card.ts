@@ -815,23 +815,31 @@ export class HaSmartphoneCard extends LitElement implements LovelaceCard {
   }
 
   private _renderSparkline(points: HistoryPoint[], unit: string) {
-    const values = points.map((p) => Number(p.state)).filter((v) => !Number.isNaN(v));
-    if (values.length < 2) return nothing;
+    const series = points
+      .map((p) => ({ time: new Date(p.last_changed).getTime(), value: Number(p.state) }))
+      .filter((p) => !Number.isNaN(p.value));
+    if (series.length < 2) return nothing;
+    const values = series.map((p) => p.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const mid = (min + max) / 2;
     const range = max - min || 1;
     const w = 230;
     const h = 44;
-    const stepX = w / (values.length - 1);
-    const coords = values
-      .map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
+    const startTimeMs = series[0].time;
+    const endTimeMs = series[series.length - 1].time;
+    const timeRange = endTimeMs - startTimeMs || 1;
+    const coords = series
+      .map(
+        (p) =>
+          `${(((p.time - startTimeMs) / timeRange) * w).toFixed(1)},${(h - ((p.value - min) / range) * h).toFixed(1)}`
+      )
       .join(" ");
     const fmt = (v: number) => `${Math.round(v * 10) / 10}${unit ? ` ${unit}` : ""}`;
 
-    const startTime = this._formatHistoryTime(points[0].last_changed);
-    const endTime = this._formatHistoryTime(points[points.length - 1].last_changed);
-    const midTime = this._formatHistoryTime(points[Math.floor(points.length / 2)].last_changed);
+    const startTime = this._formatHistoryTime(new Date(startTimeMs).toISOString());
+    const endTime = this._formatHistoryTime(new Date(endTimeMs).toISOString());
+    const midTime = this._formatHistoryTime(new Date((startTimeMs + endTimeMs) / 2).toISOString());
 
     return html`
       <div class="sheet-history">

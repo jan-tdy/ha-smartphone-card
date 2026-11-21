@@ -642,21 +642,21 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </div>
         </div>
       </div>
-    `}_renderHistory(t){const e=this._historyPoints;return void 0===e?j`<div class="sheet-history-loading">Loading 24h history…</div>`:e.length<2?U:function(t){if(!t.length)return!1;const e=t.filter(t=>""!==t.state&&!Number.isNaN(Number(t.state)));return e.length/t.length>.8}(e)?this._renderSparkline(e,t):this._renderHistoryList(e)}_renderSparkline(t,e){const i=t.map(t=>Number(t.state)).filter(t=>!Number.isNaN(t));if(i.length<2)return U;const o=Math.min(...i),n=Math.max(...i),a=(o+n)/2,r=n-o||1,s=230,l=44,c=s/(i.length-1),d=i.map((t,e)=>`${(e*c).toFixed(1)},${(l-(t-o)/r*l).toFixed(1)}`).join(" "),h=t=>`${Math.round(10*t)/10}${e?` ${e}`:""}`,u=this._formatHistoryTime(t[0].last_changed),p=this._formatHistoryTime(t[t.length-1].last_changed),v=this._formatHistoryTime(t[Math.floor(t.length/2)].last_changed);return j`
+    `}_renderHistory(t){const e=this._historyPoints;return void 0===e?j`<div class="sheet-history-loading">Loading 24h history…</div>`:e.length<2?U:function(t){if(!t.length)return!1;const e=t.filter(t=>""!==t.state&&!Number.isNaN(Number(t.state)));return e.length/t.length>.8}(e)?this._renderSparkline(e,t):this._renderHistoryList(e)}_renderSparkline(t,e){const i=t.map(t=>({time:new Date(t.last_changed).getTime(),value:Number(t.state)})).filter(t=>!Number.isNaN(t.value));if(i.length<2)return U;const o=i.map(t=>t.value),n=Math.min(...o),a=Math.max(...o),r=(n+a)/2,s=a-n||1,l=230,c=44,d=i[0].time,h=i[i.length-1].time,u=h-d||1,p=i.map(t=>`${((t.time-d)/u*l).toFixed(1)},${(c-(t.value-n)/s*c).toFixed(1)}`).join(" "),v=t=>`${Math.round(10*t)/10}${e?` ${e}`:""}`,f=this._formatHistoryTime(new Date(d).toISOString()),g=this._formatHistoryTime(new Date(h).toISOString()),m=this._formatHistoryTime(new Date((d+h)/2).toISOString());return j`
       <div class="sheet-history">
         <div class="sheet-chart">
           <div class="sheet-chart-yaxis">
-            <span>${h(n)}</span>
-            <span>${h(a)}</span>
-            <span>${h(o)}</span>
+            <span>${v(a)}</span>
+            <span>${v(r)}</span>
+            <span>${v(n)}</span>
           </div>
-          <svg class="sheet-sparkline" viewBox="0 0 ${s} ${l}" preserveAspectRatio="none">
-            <line class="sheet-chart-gridline" x1="0" y1="1" x2=${s} y2="1" vector-effect="non-scaling-stroke" />
+          <svg class="sheet-sparkline" viewBox="0 0 ${l} ${c}" preserveAspectRatio="none">
+            <line class="sheet-chart-gridline" x1="0" y1="1" x2=${l} y2="1" vector-effect="non-scaling-stroke" />
             <line
               class="sheet-chart-gridline"
               x1="0"
               y1=${22}
-              x2=${s}
+              x2=${l}
               y2=${22}
               vector-effect="non-scaling-stroke"
             />
@@ -664,12 +664,12 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
               class="sheet-chart-gridline"
               x1="0"
               y1=${43}
-              x2=${s}
+              x2=${l}
               y2=${43}
               vector-effect="non-scaling-stroke"
             />
             <polyline
-              points=${d}
+              points=${p}
               fill="none"
               stroke="var(--primary-color)"
               stroke-width="2"
@@ -678,9 +678,9 @@ function(t){return(({finisher:t,descriptor:e})=>(i,o)=>{var n;if(void 0===o){con
           </svg>
         </div>
         <div class="sheet-history-time-axis">
-          <span>${u}</span>
-          <span>${v}</span>
-          <span>${p}</span>
+          <span>${f}</span>
+          <span>${m}</span>
+          <span>${g}</span>
         </div>
       </div>
     `}_formatHistoryTime(t){return new Date(t).toLocaleTimeString(void 0,{hour:"2-digit",minute:"2-digit"})}_renderHistoryList(t){const e=t.slice(-5).reverse();return j`
